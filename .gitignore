@@ -1,0 +1,15 @@
+*.obj
+*.o
+*.bak
+*.log
+*.exe
+*.dll
+*.stash
+Makefile
+Makefile.debug
+Makefile.release
+*.Debug
+*.Release
+*.pro.user*
+release/
+debug/

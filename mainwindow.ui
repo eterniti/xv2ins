@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>995</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>XV2 Mods Installer</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="leftMargin">
+     <number>3</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>3</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QTreeWidget" name="modsList">
+      <property name="contextMenuPolicy">
+       <enum>Qt::ActionsContextMenu</enum>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::ExtendedSelection</enum>
+      </property>
+      <property name="rootIsDecorated">
+       <bool>false</bool>
+      </property>
+      <column>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Author</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Version</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>995</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionAssociate_x2m_extension"/>
+    <addaction name="actionSlot_editor"/>
+    <addaction name="actionSlot_editor_stages"/>
+    <addaction name="actionSlot_editor_stages_local_mode"/>
+    <addaction name="actionFind_and_delete_dead_ids"/>
+    <addaction name="actionChange_3_letter_code_of_x2m"/>
+    <addaction name="actionCompile_INTERNAL_folder"/>
+    <addaction name="actionConvert_charalist"/>
+    <addaction name="separator"/>
+    <addaction name="actionClear_installation"/>
+    <addaction name="actionRemoveEmptyDirs"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionOpen"/>
+   <addaction name="actionUninstall"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionOpen">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/install.ico</normaloff>:/install.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Install</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionUninstall">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/uninstall.ico</normaloff>:/uninstall.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Uninstall</string>
+   </property>
+  </action>
+  <action name="actionAssociate_x2m_extension">
+   <property name="text">
+    <string>Associate .x2m extension</string>
+   </property>
+  </action>
+  <action name="actionSlot_editor">
+   <property name="text">
+    <string>Slot editor</string>
+   </property>
+  </action>
+  <action name="actionFind_and_delete_dead_ids">
+   <property name="text">
+    <string>Find dead ids</string>
+   </property>
+  </action>
+  <action name="actionClear_installation">
+   <property name="text">
+    <string>Clear installation</string>
+   </property>
+  </action>
+  <action name="actionRemoveEmptyDirs">
+   <property name="text">
+    <string>Remove empty directories</string>
+   </property>
+  </action>
+  <action name="actionChange_3_letter_code_of_x2m">
+   <property name="text">
+    <string>Change 3-letter code of x2m</string>
+   </property>
+  </action>
+  <action name="actionConvert_charalist">
+   <property name="text">
+    <string>Convert CharaList</string>
+   </property>
+  </action>
+  <action name="actionCompile_INTERNAL_folder">
+   <property name="text">
+    <string>Compile INTERNAL folder</string>
+   </property>
+  </action>
+  <action name="actionSlot_editor_stages">
+   <property name="text">
+    <string>Slot editor (stages)</string>
+   </property>
+  </action>
+  <action name="actionSlot_editor_stages_local_mode">
+   <property name="text">
+    <string>Slot editor (stages, local mode)</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

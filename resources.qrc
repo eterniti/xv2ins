@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>uninstall.ico</file>
+        <file>install.ico</file>
+        <file>unknown.dds</file>
+        <file>add.png</file>
+    </qresource>
+</RCC>
