@@ -122,7 +122,7 @@ bool MainWindow::Initialize()
         return false;
     }
 
-    if (patcher_version != config.patcher_version_new)
+    if (!Utils::CompareFloat(patcher_version, config.patcher_version_new))
     {
         // First time install
         if (!XV2Patcher::ConfigureDefaults())
@@ -143,7 +143,7 @@ bool MainWindow::Initialize()
     {
         clean_install = 1;
     }
-    else if (!game_cms->FindEntryByName("THJ") || !game_cms->FindEntryByName("THG"))
+    else if (!game_cms->FindEntryByName("FOD") || !game_cms->FindEntryByName("FOV"))
     {
         clean_install = 1;
     }
