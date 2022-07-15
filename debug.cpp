@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include "debug.h"
+#include "xv2ins_common.h"
 
 #define DEBUG_BUFFER_SIZE	1324
 
@@ -46,7 +47,7 @@ int FORMAT_PRINTF UserPrintf(const char* fmt, ...)
     }
     else
     {
-        QMessageBox::information(NULL, "xv2ins", dbg);
+        QMessageBox::information(NULL, "xv2ins " PROGRAM_VERSION, dbg);
         //MessageBoxA(nullptr, dbg, "xv2ins", MB_ICONINFORMATION);
     }
 
@@ -82,7 +83,7 @@ int FORMAT_PRINTF DebugPrintf(const char* fmt, ...)
         }
         else
         {
-            MessageBoxA(nullptr, dbg, "xv2ins", MB_ICONWARNING);
+            MessageBoxA(nullptr, dbg, "xv2ins " PROGRAM_VERSION, MB_ICONWARNING);
         }
     }
 

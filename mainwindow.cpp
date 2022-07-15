@@ -503,6 +503,59 @@ void MainWindow::AddModToQuestCompiler(X2mFile &x2m, Xv2QuestCompiler &qc, const
     qc.PushMod(Utils::ToLowerCase(x2m.GetModGuid()), mod);
 }
 
+// Temporal fix by mess created by version 3.8
+//  To be deleted in the future
+static int num_skill_mods_fixed_381 = 0;
+static int num_costume_mods_fixed_381 = 0;
+
+void FixMod381(X2mFile &x2m)
+{
+    if (x2m.GetType() == X2mType::NEW_SKILL && x2m.HasSkillIdbEntry() && x2m.FindInstalledSkill())
+    {
+        if (x2m.InstallCusSkill())
+        {
+            if (x2m.InstallIdbSkill())
+            {
+                num_skill_mods_fixed_381++;
+            }
+            else
+            {
+                //DPRINTF("InstallIdbSkill failed on %s\n", x2m.GetModName().c_str());
+            }
+        }
+        else
+        {
+            //DPRINTF("InstallCusSkill failed on %s\n", x2m.GetModName().c_str());
+        }
+
+    }
+    else if (x2m.GetType() == X2mType::NEW_COSTUME && x2m.FindInstalledCostume())
+    {
+        if (x2m.InstallCostumePartSets())
+        {
+            if (x2m.InstallCostumeCostumeNames() && x2m.InstallCostumeAccessoryNames() && x2m.InstallCostumeCostumeDescs() && x2m.InstallCostumeAccessoryDescs())
+            {
+                if (x2m.InstallCostumeIdb())
+                {
+                    num_costume_mods_fixed_381++;
+                }
+                else
+                {
+                    //DPRINTF("InstallCostumeIdb failed on %s\n", x2m.GetModName().c_str());
+                }
+            }
+            else
+            {
+                //DPRINTF("InstallCostume*Names or *Descs failed on %s\n", x2m.GetModName().c_str());
+            }
+        }
+        else
+        {
+            //DPRINTF("InstallCostumePartSets failed on %s\n", x2m.GetModName().c_str());
+        }
+    }
+}
+
 bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
 {
     MainWindow *pthis = (MainWindow *)param;
@@ -513,7 +566,18 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
         X2mFile x2m;       
 
         if (x2m.LoadFromFile(path))
-        {
+        { 
+            if (!config.idb_fix_applied)
+            {
+                std::string ver = PROGRAM_VERSION;
+                if (ver == "3.81" && x2m.GetFormatVersion() < (x2m.X2M_MIN_VERSION_NEW_IDB_FORMAT-0.00001))
+                {
+                    FixMod381(x2m);
+                }
+            }
+
+            // end of fix
+
             if (x2m.HasSevHL())
             {
                 for (size_t i = 0; i < x2m.GetNumSevHLEntries(); i++)
@@ -629,6 +693,21 @@ void MainWindow::LoadInstalledMods()
     process_selection_change = false;
     installed_mods.clear();
     Utils::VisitDirectory(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, LoadVisitor, this);
+
+    // TO BE deleted on future version
+    if (!config.idb_fix_applied)
+    {
+        config.idb_fix_applied = true;
+        config.Save();
+
+        //DPRINTF("%d skill mods and %d costume mods fixed.\n", num_skill_mods_fixed_381, num_costume_mods_fixed_381);
+
+        if (num_skill_mods_fixed_381 > 0 || num_costume_mods_fixed_381 > 0)
+        {
+            Xenoverse2::CommitIdb(true, true, false, true);
+        }
+    }
+
     UpdateStatus();
     process_selection_change = true;
     on_modsList_itemSelectionChanged();
