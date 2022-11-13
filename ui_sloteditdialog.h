@@ -136,6 +136,7 @@ public:
          << QApplication::translate("SlotEditDialog", "Dlc_12", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_13", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_14", 0)
+         << QApplication::translate("SlotEditDialog", "Dlc_15", 0)
         );
     } // retranslateUi
 
