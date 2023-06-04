@@ -143,7 +143,7 @@ bool MainWindow::Initialize()
     {
         clean_install = 1;
     }
-    else if (!game_cms->FindEntryByName("FIO") || !game_cms->FindEntryByName("FIG"))
+    else if (!game_cms->FindEntryByName("SIO") || !game_cms->FindEntryByName("SIP"))
     {
         clean_install = 1;
     }
@@ -4023,7 +4023,7 @@ void MainWindow::on_actionExit_triggered()
 void MainWindow::on_actionAbout_triggered()
 {    
     /*size_t size;
-    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.19.bin", &size);
+    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.20.1_as_dump.exe", &size);
 
     if (!buf)
     {
@@ -4031,7 +4031,7 @@ void MainWindow::on_actionAbout_triggered()
         return;
     }
 
-    static const char *eve_dump[] = { "template", "BFlbb", "template", "BFpln", "BFrck", "BFrcn", "BFnmc", "BFnms", "BFnmb", "BFtwc", "BFtwn", "BFtwh", "BFcel", "BFceb", "BFkoh", "BFsin", "BFsky", "BFsei", "BFkai", "BFspe", "BFspv", "BFice", "BFtfl", "BFgen", "BFten", "BFund", "BFtok", "BFnmt", "template", "BFnmc", "BFnms", "DMtwh", "template", "template", "template", "template", "template", "template", "BFlnd", "BFlnc", "BFhel", "template", "template", "template", "template", "template", "template", "template", "template", "template", "DMtwh2", "BFtre", "BFbrw", "FLBY03IN", "FLBY04IN", "FLBY05IN", "BFsmt", "template", "BFtwf", "BFwis", "BFpot", "BFvol", "Err", "TRN", "template", "SANDBOX", "NMC", "Random" };
+    static const char *eve_dump[] = { "template", "BFlbb", "template", "BFpln", "BFrck", "BFrcn", "BFnmc", "BFnms", "BFnmb", "BFtwc", "BFtwn", "BFtwh", "BFcel", "BFceb", "BFkoh", "BFsin", "BFsky", "BFsei", "BFkai", "BFspe", "BFspv", "BFice", "BFtfl", "BFgen", "BFten", "BFund", "BFtok", "BFnmt", "template", "BFnmc", "BFnms", "DMtwh", "template", "template", "template", "template", "template", "template", "BFlnd", "BFlnc", "BFhel", "template", "template", "template", "template", "template", "template", "template", "template", "template", "DMtwh2", "BFtre", "BFbrw", "FLBY03IN", "FLBY04IN", "FLBY05IN", "BFsmt", "template", "BFtwf", "BFwis", "BFpot", "BFvol", "BFrrg", "Err", "Err", "Err", "Err", "Err", "TRN", "template", "SANDBOX", "NMC", "Random" };
 
     Xv2StageDefFile stadef;
 
@@ -4087,19 +4087,35 @@ void MainWindow::on_actionAbout_triggered()
     //                         buf+0xECA140,
     //                         eve_dump))
     // 1.19
-    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x13FA70000, buf, buf+0xEC4A00,
-                             XV2_ORIGINAL_NUM_SS_STAGES, buf+0xEC54A0,
-                             buf+0xEC5530,
-                             buf+0xE97560,
-                             buf+0x13BBA80,
-                             buf+0xEF4660,
-                             eve_dump))
+    //if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x13FA70000, buf, buf+0xEC4A00,
+    //                         XV2_ORIGINAL_NUM_SS_STAGES, buf+0xEC54A0,
+    //                         buf+0xEC5530,
+    //                         buf+0xE97560,
+    //                         buf+0x13BBA80,
+    //                         buf+0xEF4660,
+    //                         eve_dump))
+    // 1.20
+    //if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF6C2100000, buf, buf+0xECEC30,
+    //                         XV2_ORIGINAL_NUM_SS_STAGES, buf+0xECF7A0,
+    //                         buf+0xECF830,
+    //                         buf+0xEA1350,
+    //                         buf+0x13C7CC0,
+    //                         buf+0xEFEA30,
+    //                         eve_dump))
+    // 1.20.1
+    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7047C0000, buf, buf+0xED2BC0,
+                                 XV2_ORIGINAL_NUM_SS_STAGES, buf+0xED3730,
+                                 buf+0xED37D0,
+                                 buf+0xEA74E0,
+                                 buf+0x13C7B70,
+                                 buf+0xF022D0,
+                                 eve_dump))
         return;
 
     if (!xv2fs->DecompileFile(&stadef, "data/xv2_stage_def.xml"))
         return;
 
-    UPRINTF("Oki.\n");^*/
+    UPRINTF("Oki.\n");*/
 
     QMessageBox box;
 

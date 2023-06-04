@@ -13,3 +13,4 @@ Makefile.release
 *.pro.user*
 release/
 debug/
+.qtc_clangd/
