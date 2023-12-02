@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QTime>
+#include <QProcess>
 
 #include <map>
 
@@ -26,6 +27,8 @@
 
 #define CHASEL_PATH "Internal/CharaSele"
 
+#define XV2INSTALLER_INSTANCE "XV2INSTALLER_INSTANCE"
+
 enum
 {
     COLUMN_NAME,
@@ -39,6 +42,20 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+}
+
+static LogDialog *log_dlg;
+
+static void log_window(const char *dbg)
+{
+    log_dlg->Append(dbg);
+}
+
+static void log_window_error(const char *dbg)
+{
+    log_dlg->SetNextBold();
+    log_dlg->SetNextColor("red");
+    log_dlg->Append(dbg);
 }
 
 bool MainWindow::Initialize()
@@ -66,7 +83,7 @@ bool MainWindow::Initialize()
     set_debug_level(2);
     QDir::setCurrent(qApp->applicationDirPath());
 
-    CreateMutexA(nullptr, FALSE, "XV2INSTALLER_INSTANCE");
+    CreateMutexA(nullptr, FALSE, XV2INSTALLER_INSTANCE);
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
         UPRINTF("An instance of the installer is already running.\n");
@@ -102,7 +119,7 @@ bool MainWindow::Initialize()
         box.setIcon(QMessageBox::Critical);
         box.setTextFormat(Qt::RichText);
         box.setText("This program needs xv2patcher to be installed.<br><br>"
-                    "Download from <a href='http://animegamemods.freeforums.net/thread/701/tools-eternity'>http://animegamemods.freeforums.net/thread/701/tools-eternity</a>");
+                    "Download from <a href=https://videogamemods.com/xenoverse/mods/eternity-tools/'>https://videogamemods.com/xenoverse/mods/eternity-tools/</a>");
         box.exec();
         return false;
     }
@@ -117,7 +134,7 @@ bool MainWindow::Initialize()
         box.setIcon(QMessageBox::Critical);
         box.setTextFormat(Qt::RichText);
         box.setText(QString("This program needs xv2patcher %1 or greater (your current version is %2). Update xv2patcher.<br><br>"
-                    "Download lastest xv2patcher fron <a href='http://animegamemods.net/thread/4059/tools-eternity'>http://animegamemods.net/thread/4059/tools-eternity</a>").arg(MINIMUM_PATCHER_REQUIRED).arg(patcher_version));
+                    "Download lastest xv2patcher fron <a href='https://videogamemods.com/xenoverse/mods/eternity-tools/'>https://videogamemods.com/xenoverse/mods/eternity-tools/</a>").arg(MINIMUM_PATCHER_REQUIRED).arg(patcher_version));
         box.exec();
         return false;
     }
@@ -137,41 +154,42 @@ bool MainWindow::Initialize()
         return false;
     }
 
-    int clean_install = 0;
+    bool clean_install = false;
 
     if (!success && needs_update)
     {
-        clean_install = 1;
+        clean_install = true;
     }
     else if (!game_cms->FindEntryByName("SIO") || !game_cms->FindEntryByName("SIP"))
     {
-        clean_install = 1;
+        clean_install = true;
     }
-    else
+    else if (success)
     {
-       /*if (Utils::FileExists(Utils::GetAppDataPath("XV2INS\\CharaList.as")) ||
-           Utils::FileExists(Utils::GetAppDataPath("XV2INS\\CharaListV2.as")) ||
-           Utils::FileExists(Utils::GetAppDataPath("XV2INS\\CharaListV3.as")) ||
-           Utils::FileExists(Utils::GetAppDataPath("XV2INS\\CharaListV4.as")) ||
-           Utils::FileExists(Utils::GetAppDataPath("XV2INS\\CharaListV5.as")))
-            clean_install = 2;*/
+        if (xv2fs->FileExists("data/CLEAN_MODE_TEST.txt", false, true))
+            clean_install = true;
     }
 
-    if (clean_install != 0)
+    if (clean_install)
     {
-        if (clean_install == 1)
-        {
-            DPRINTF("It looks like you have game data from an old update, the installer cannot work with these files.\n"
-                    "\nI will send you now to the Clear Installation tool.\n");
-        }
+        QMessageBox box;
 
-        else
-        {
-            DPRINTF("It looks like you have data from an old XV2INS version, the installer cannot work with these files.\n"
-                    "\nI will send you now to the Clear Installation tool.\n");
-        }
+        box.setText("It looks like you have game data from an old update, the installer cannot work with these files.\n"
+                    "\nTo continue, you will have to either clear installation or port over current installation (experimental)\n"
+                    "\nIn both cases, you will have another confirmation screen before.");
 
-        ClearInstallation(false);
+        QPushButton *clear = box.addButton("Clear", QMessageBox::ActionRole);
+        QPushButton *restore = box.addButton("Port over (experimental)", QMessageBox::ActionRole);
+        box.addButton(QMessageBox::Cancel);
+        box.setDefaultButton(clear);
+
+        box.exec();
+
+        if (box.clickedButton() == clear)
+            ClearInstallation(false);
+        else if (box.clickedButton() == restore)
+            RestorePart1();
+
         return false;
     }
 
@@ -179,7 +197,20 @@ bool MainWindow::Initialize()
     LoadInstalledMods();
 
     if (qApp->arguments().size() >= 2)
-    {
+    {       
+        if (qApp->arguments()[1] == "--restore")
+        {
+            if (qApp->arguments().size() == 2)
+            {
+                DPRINTF("--restore needs to be followed by a directory path.\n");
+                return false;
+            }
+
+            invisible_mode = true;
+            RestorePart2(qApp->arguments()[2]);
+            return false;
+        }
+
         bool silent = false;
         bool multiple = false;
         int total = qApp->arguments().size()-1;
@@ -333,14 +364,14 @@ void MainWindow::CheckRegistryAssociation()
 
     QMessageBox box(this);
     QPushButton *yes;
-    QPushButton *no;
+    //QPushButton *no;
 
     box.setText("XV2 Installer has noticed a change in the installer path with respect to the x2m association.\n\n"
                 ".x2m extension need to be registered again. Do you want to do it now?");
 
     yes = box.addButton("Yes", QMessageBox::YesRole);
     yes->setIcon(this->style()->standardIcon(QStyle::SP_VistaShield));
-    no = box.addButton("No", QMessageBox::NoRole);
+    //no = box.addButton("No", QMessageBox::NoRole);
     box.setDefaultButton(yes);
 
     box.exec();
@@ -1018,7 +1049,7 @@ void MainWindow::PostProcessSkill(X2mFile *x2m)
                 {
                     min = max = 7;
                 }
-                else
+                else // Awaken
                 {
                     min = max = 8;
                 }
@@ -1140,7 +1171,7 @@ static void CompilerOutput(const char *dbg)
     compiler_output += dbg;
 }
 
-MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *reinstall_mod, bool silent_mode)
+MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *reinstall_mod, bool silent_mode, bool restore_mode)
 {
     X2mFile x2m, old;
     X2mFile *x2d = nullptr;
@@ -1449,22 +1480,25 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         {
             //UPRINTF("This mod update will triger an internal uninstall + install.\n");
 
-            if (!UninstallMod(*mod, false))
+            if (!UninstallMod(*mod, false, restore_mode))
             {
                 DPRINTF("Mod required internal uninstall+install, but uninstall part failed.\n");
-                DPRINTF("Program will close now.\n");
-
                 ClearAttachments(attachments);
 
-                if (!invisible_mode)
-                    qApp->exit();
-                else
-                    exit(0);
+                if (!restore_mode)
+                {
+                    DPRINTF("Program will close now.\n");                    
+
+                    if (!invisible_mode)
+                        qApp->exit();
+                    else
+                        exit(0);
+                }
 
                 return nullptr;
             }
 
-            return InstallMod(path, mod, false);
+            return InstallMod(path, mod, silent_mode, restore_mode);
         }
     }
     else // New install
@@ -1519,6 +1553,12 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
             if (!col_message.isEmpty())
             {
+                if (restore_mode)
+                {
+                    DPRINTF("COLLISION of character code shouldn't happen in restore mode.");
+                    return nullptr;
+                }
+
                 col_message += "\nXV2 Installer can fix this issue by renaming the 3-letter code of the mod you want to install.\n"
                            "(Note: This process only takes place in RAM, your x2m file will be unchaged in disk, use the Tools menu to do that)\n"
                            "Although the process works most of the times, there aren't guarantees for it to work the 100% of times.\n"
@@ -1558,9 +1598,13 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
                         break;
                 }
 
-                redirect_uprintf(log_empty);
+                if (!restore_mode)
+                    redirect_uprintf(log_empty);
+
                 bool ret = ConvertModEntry(&x2m, new_entry);
-                redirect_uprintf((RedirectFunc)nullptr);
+
+                if (!restore_mode)
+                    redirect_uprintf((RedirectFunc)nullptr);
 
                 if (!ret)
                 {
@@ -1799,7 +1843,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
             fail = true;
         }
 
-        if (!fail && !InstallMod(Utils::StdStringToQString(temp_att_path), nullptr, true))
+        if (!fail && !InstallMod(Utils::StdStringToQString(temp_att_path), nullptr, true, restore_mode))
         {
             DPRINTF("Failed to install attachment mod: %s\n", att_x2m->GetModName().c_str());
             fail = true;
@@ -1858,6 +1902,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         PHASE_COMMIT_CHARA_COSTUME_NAMES,
         PHASE_COMMIT_SKILL_NAMES, /* For skills */
         PHASE_COMMIT_SKILL_DESCS, /* For skills */
+        PHASE_COMMIT_SKILL_HOWS, /* For skills */
         PHASE_COMMIT_SKILL_BTLHUD_TEXT, /* For skills */
         PHASE_COMMIT_SKILL_IDB, /* For skills */
         PHASE_COMMIT_COSTUME_NAMES, /* For costumes */
@@ -2136,6 +2181,12 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
             goto out;
         }
 
+        if (!x2m.InstallSkillHow())
+        {
+            DPRINTF("InstallSkillHow failed.\n");
+            goto out;
+        }
+
         if (!x2m.InstallIdbSkill())
         {
             DPRINTF("InstallIdbSkill failed.\n");
@@ -2307,9 +2358,14 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         qc.SetTestMode(true);
 
         compiler_output.clear();
-        redirect_dprintf(CompilerOutput);
+
+        if (!restore_mode)
+            redirect_dprintf(CompilerOutput);
+
         bool ret = qc.CompileQuest(qs, "quest.x2qs", cs, "chars.x2qs", ds, "dialogue.x2qs", ps, "positions.x2qs", svec, sfvec);
-        redirect_dprintf((RedirectFunc)nullptr);
+
+        if (!restore_mode)
+            redirect_dprintf((RedirectFunc)nullptr);
 
         if (!ret)
         {
@@ -2500,6 +2556,14 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         if (!Xenoverse2::CommitSkillDescs())
         {
             DPRINTF("CommitSkillDescs failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_COMMIT_SKILL_HOWS;
+
+        if (!Xenoverse2::CommitSkillHows())
+        {
+            DPRINTF("CommitSkillHows failed.\n");
             goto out;
         }
 
@@ -2881,6 +2945,19 @@ out:
                 }
             }
 
+            if (phase >= PHASE_COMMIT_SKILL_HOWS)
+            {
+                if (x2m.UninstallSkillHow())
+                {
+                    if (!Xenoverse2::CommitSkillHows())
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+
             if (phase >= PHASE_COMMIT_SKILL_IDB)
             {
                 if (x2m.UninstallIdbSkill())
@@ -3094,33 +3171,44 @@ out:
 
         delete x2d;
 
-        DPRINTF("Program will close now.\n");
+        if (!restore_mode)
+        {
+            DPRINTF("Program will close now.\n");
 
-        if (!invisible_mode)
-            qApp->exit();
-        else
-            exit(0);
+            if (!invisible_mode)
+                qApp->exit();
+            else
+                exit(0);
+        }
 
         return nullptr;
     } // if error
 
     const std::string dummy_path = Utils::GetAppDataPath(INSTALLED_MODS_PATH) + "/" + x2m.GetModGuid() + ".x2d";
-    bool ret = x2d->SaveToFile(dummy_path, true, true);
-    delete x2d;
 
-    if (!ret)
+    if (!restore_mode)
     {
-        DPRINTF("Install was ok, but failed in saving mod data for installer!.\n"
-                "Installer will be in an inconsistent state.\n");
+        bool ret = x2d->SaveToFile(dummy_path, true, true);
+        delete x2d;
 
-        DPRINTF("Program will close now.\n");
+        if (!ret)
+        {
+            DPRINTF("Install was ok, but failed in saving mod data for installer!.\n"
+                    "Installer will be in an inconsistent state.\n");
 
-        if (!invisible_mode)
-            qApp->exit();
-        else
-            exit(0);
+            DPRINTF("Program will close now.\n");
 
-        return nullptr;
+            if (!invisible_mode)
+                qApp->exit();
+            else
+                exit(0);
+
+            return nullptr;
+        }
+    }
+    else
+    {
+        delete x2d;
     }
 
     if (!mod)
@@ -3234,7 +3322,7 @@ void MainWindow::PostProcessCostumeUninstall(X2mFile *x2m, const X2mCostumeEntry
     }
 }
 
-bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty_dir)
+bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty_dir, bool restore_mode)
 {
     X2mFile x2d;
     X2mType type;
@@ -3425,6 +3513,12 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             return false;
         }
 
+        if (!x2d.UninstallSkillHow())
+        {
+            DPRINTF("UninstallSkillHow failed.\n");
+            return false;
+        }
+
         if (!x2d.UninstallIdbSkill())
         {
             DPRINTF("UninstallIdbSkill failed.\n");
@@ -3567,9 +3661,14 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
         qc.SetTestMode(true);
 
         compiler_output.clear();
-        redirect_dprintf(CompilerOutput);
+
+        if (!restore_mode)
+            redirect_dprintf(CompilerOutput);
+
         bool ret = qc.CompileQuest(qs, "quest.x2qs", cs, "chars.x2qs", ds, "dialogue.x2qs", ps, "positions.x2qs", svec, sfvec);
-        redirect_dprintf((RedirectFunc)nullptr);
+
+        if (!restore_mode)
+            redirect_dprintf((RedirectFunc)nullptr);
 
         if (!ret)
         {
@@ -3841,7 +3940,21 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
     }
 
     qc.RemoveMod(Utils::ToLowerCase(x2d.GetModGuid()));
+
+    if (restore_mode)
+        return true;
+
     return Utils::RemoveFile(mod.package_path);
+}
+
+void MainWindow::RestartProgram(const QStringList &args)
+{
+    HANDLE handle = CreateMutexA(nullptr, FALSE, XV2INSTALLER_INSTANCE);
+    if (handle)
+        CloseHandle(handle);
+
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), args);
+    qApp->exit();
 }
 
 bool MainWindow::ClearInstallation(bool special_mode)
@@ -3918,7 +4031,7 @@ bool MainWindow::ClearInstallation(bool special_mode)
 
     if (success)
     {
-        UPRINTF("The mod installation has been cleared succesfully. Program will now close, restart it manually.\n");
+        UPRINTF("The mod installation has been cleared succesfully. Program will now restart automatically.\n");        
     }
 
     if (popup_pause)
@@ -3927,7 +4040,538 @@ bool MainWindow::ClearInstallation(bool special_mode)
         delete[] popup_pause;
     }
 
+    if (success)
+        RestartProgram();
+
     return success;
+}
+
+void MainWindow::RestorePart1()
+{
+    const std::string data_dir = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), "data");
+    const std::string data_dir_old = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), std::string("data") + Utils::ToString(Utils::RandomInt(100000, 999999)));
+
+    QMessageBox box;
+    QString text;
+
+    text = "<b><font color='red'>Warning: this is an experimental/alpha festure.<br>Make sure to read everything before confirming.<br>An in case of instability in game, use Tools->Clear Installation and install from scratch.</font></b><br>";
+    text += "<br>This process will attempt to port over current installation.<br>";
+    text += "The process will consist in the following:<br><br>";
+    text += "\t-Firstly, the data folder will be renamed to " + Utils::StdStringToQString(Utils::GetFileNameString(data_dir_old), true) + "<br><br>";
+    text += "\t-Then the program will self-restart, creating a basic new data folder (clean).<br><br>";
+    text += "\t-The program will try to restore all x2m mods by using a combination of the semi-dummy x2d files in Roaming/XV2INS/Installed and the old data folder.<br><br>";
+    text += "\t-After that, it will port old slots (characters and stages) to new installation.<br><br>";
+    text += "\t-Finally, the program will ask you if you want to delete, keep or send to recycle bin the old data folder.<br><br>";
+    text += "<b>Known limitations:</b><br><br>";
+    text += "\t-The tool can only restore x2m mods, anything installed outside cannot be ported over.<br>";
+    text += "\t-The ID assignment will be different, which means that you may need to buy custom clothes/skills again, and new quests may appear in game in a different order.<br>";
+    text += "\t-Any X2M mod with a 'JUNGLE' directory that has files outside data will fail to install.<br>";
+    text += "\t-This tool cannot account for mods that install system/global files that may break new installation.<br>";
+    text += "<br>Before proceeding, these warnings:<br>";
+    text += "<b><font color='red'>-DO NOT CLOSE THE LOG WINDOW UNTIL THE PROCESS IS FINISHED.</font></b><br>";
+    text += "<b>-Make sure to not have any programs, using the current data folder or the rename will fail.</b><br>";
+    text += "<b>-If after several seconds, you cannot see a log window after clicking Yes, please try to minimize all windows.</b><br>";
+    text += "<b>-You need at least the same space in disk that current data folder has.</b><br>";
+    text += "<br><br>Do you want to proceed?";
+
+    box.setText(text);
+    box.setIcon(QMessageBox::Icon::Warning);
+    box.addButton(QMessageBox::Yes);
+    box.addButton(QMessageBox::No);
+    box.setDefaultButton(QMessageBox::No);
+
+    if (box.exec() != QMessageBox::Yes)
+        return;
+
+    if (!Utils::RenameFile(data_dir, data_dir_old))
+    {
+        DPRINTF("Installation restoration failed: cannot rename data directory.\n"
+                "Make sure it's not in use by some program.");
+        return;
+    }
+
+    RestartProgram( { "--restore", Utils::StdStringToQString(data_dir_old, true) });
+}
+
+void MainWindow::RestoreMods(const std::vector<std::string> &paths, X2mType type, const std::string &label, int &global_success, int &global_errors, std::vector<std::string> &failures)
+{
+    int success = 0;
+    int errors = 0;
+
+    UPRINTF("<b>Restoring %s mods...</b><br>", label.c_str());
+
+    for (const std::string &file : paths)
+    {
+        if (!Utils::EndsWith(file, ".x2d", false))
+            continue;
+
+        X2mFile x2d;
+        if (!x2d.LoadFromFile(file) || x2d.GetType() != type)
+            continue;
+
+        UPRINTF("Attempting to restore mod \"%s\" from file \"%s\"...", x2d.GetModName().c_str(), Utils::GetFileNameString(file).c_str());
+        QApplication::processEvents();
+
+        if (InstallMod(Utils::StdStringToQString(file, true), nullptr, true, true))
+        {
+            UPRINTF("<b>Success!</b><br>");
+            success++;
+        }
+        else
+        {
+            failures.push_back(file);
+            DPRINTF("Failure!\n");
+            errors++;
+        }
+
+        QApplication::processEvents();
+    }
+
+    if (success == 0 && errors == 0)
+    {
+        UPRINTF("There were no %s mods.", label.c_str());
+    }
+    else
+    {
+       UPRINTF("<b>%d %s mods were restored with success%s.</b>", success, label.c_str(), (errors==0) ? " (all of them!)" : "");
+       if (errors > 0)
+           DPRINTF("%d %s mods failed to be restored.\n", errors, label.c_str());
+    }
+    UPRINTF("\n");
+
+    QApplication::processEvents();
+    global_success += success;
+    global_errors += errors;
+}
+
+static size_t FindLastVanillaChar(const Xv2PatcherSlotsFile &sf, bool exclude_prb)
+{
+    size_t latest = (size_t)-1;
+
+    for (size_t i = 0; i < sf.GetNumSlots(); i++)
+    {
+        const CharaListSlot &slot = sf.GetSlots()[i];
+        if (slot.entries.size() == 0)
+            continue;
+
+        const CharaListSlotEntry &entry = slot.entries[0];
+        if (entry.code.length() != 5)
+            continue;
+
+        std::string cms_entry = entry.code.substr(1, 3); // remove quotes
+        if (Xenoverse2::IsOriginalChara(cms_entry))
+        {
+            if (!exclude_prb || entry.dlc != "PRB")
+                latest = i;
+        }
+    }
+
+    return latest;
+}
+
+bool MainWindow::RestoreCharaSlots(const std::string &recover_path)
+{
+    Xv2PatcherSlotsFile os;
+
+    if (!os.LoadFromFile(Utils::MakePathString(recover_path, "XV2P_SLOTS.x2s")))
+        return false;
+
+    // The base will be the old slots file. And from there, we will introduce the new characters/costumes of latest update
+    // First: introduce full original characters that exist in new slot, but not in old slots (e.g.: probably DLC chars)
+    for (size_t i = 0; i < chara_list->GetNumSlots(); i++)
+    {
+        const CharaListSlot &nslot = chara_list->GetSlots()[i];
+        if (nslot.entries.size() == 0)
+            continue;
+
+        if (nslot.entries[0].code.length() != 5)
+            continue;
+
+        std::string cms_entry = nslot.entries[0].code.substr(1, 3); // remove quotes
+        size_t idx;
+
+        if (Xenoverse2::IsOriginalChara(cms_entry) && !os.FindFirstMatch(nslot.entries[0].code, &idx))
+        {
+            size_t lv = FindLastVanillaChar(os, true);
+            if (lv == (size_t)-1)
+                continue;
+
+            os.PlaceAtPos(lv+1, nslot);
+        }
+    }
+
+    // Second: introduce any new costume that may have been introduced to vanilla characters
+    for (size_t i = 0; i < chara_list->GetNumSlots(); i++)
+    {
+        const CharaListSlot &nslot = chara_list->GetSlots()[i];
+        if (nslot.entries.size() == 0)
+            continue;
+
+        if (nslot.entries[0].code.length() != 5)
+            continue;
+
+        std::string cms_entry = nslot.entries[0].code.substr(1, 3); // remove quotes
+        if (!Xenoverse2::IsOriginalChara(cms_entry))
+            continue;
+
+        for (size_t j = 0; j < nslot.entries.size(); j++)
+        {
+            const CharaListSlotEntry &nentry = nslot.entries[j];
+            size_t idx, jdx;
+
+            if (!os.FindFirstMatch(nentry.code, nentry.costume_index, nentry.model_preset, &idx, &jdx))
+            {
+                if (os.FindFirstMatch(nentry.code, &idx))
+                {
+                    os[idx].entries.push_back(nentry);
+                }
+            }
+        }
+    }
+
+    // Now, remove any characters that don't exist (eg, those that may have failed to install)
+    bool done = false;
+    while (!done)
+    {
+        done = true;
+        for (const CharaListSlot &slot : os)
+        {
+            if (slot.entries.size() == 0)
+                continue;
+
+            for (const CharaListSlotEntry &entry : slot.entries)
+            {
+                if (entry.code.length() != 5)
+                    continue;
+
+                std::string cms_entry = entry.code.substr(1, 3); // remove quotes
+                if (!game_cms->FindEntryByName(cms_entry))
+                {
+                    //DPRINTF("Deleting %s", entry.code.c_str());
+                    os.RemoveSlots(entry.code); // slot && entry won't longer be valid after this call, so we have to start over the loops
+                    done = false;
+                    break;
+                }
+            }
+
+            if (!done)
+                break;
+        }
+    }
+
+    // Voice id of mod characters are messed at this point, restore them from new installation
+    for (CharaListSlot &slot : os)
+    {
+        for (CharaListSlotEntry &entry : slot.entries)
+        {
+            if (entry.code.length() != 5)
+                continue;
+
+            std::string cms_entry = entry.code.substr(1, 3); // remove quotes
+            if (Xenoverse2::IsOriginalChara(cms_entry))
+                continue;
+
+            size_t idx, jdx;
+            if (chara_list->FindFirstMatch(entry.code, entry.costume_index, entry.model_preset, &idx, &jdx))
+            {
+                const CharaListSlotEntry &another = (*chara_list)[idx].entries[jdx];
+                entry.voices_id_list[0] = another.voices_id_list[0];
+                entry.voices_id_list[1] = another.voices_id_list[1];
+            }
+        }
+    }
+
+    // Commit file
+    return xv2fs->SaveFile(&os, "data/XV2P_SLOTS.x2s");
+}
+
+static size_t FindLastVanillaStage(const Xv2PatcherSlotsFileStage &sf)
+{
+    size_t latest = (size_t)-1;
+
+    for (size_t i = 0; i < sf.GetNumSlots(); i++)
+    {
+        const Xv2StageSlot &slot = sf.GetSlots()[i];
+        Xv2Stage *s = game_stage_def->GetStageBySsid(slot.stage);
+        if (s)
+        {
+            if (Xenoverse2::IsForbiddenNewStageName(s->code))
+                latest = i;
+        }
+    }
+
+    return latest;
+}
+
+bool MainWindow::RestoreStageSlots(const std::string &recover_path, bool local)
+{
+    const std::string fn = (local) ? "XV2P_SLOTS_STAGE_LOCAL.x2s" : "XV2P_SLOTS_STAGE.x2s";
+    Xv2PatcherSlotsFileStage os;
+
+    if (!os.LoadFromFile(Utils::MakePathString(recover_path, fn)))
+        return false;
+
+    static Xv2StageDefFile *old_stage_def = nullptr;
+    if (old_stage_def == nullptr)
+    {
+        old_stage_def = new Xv2StageDefFile();
+        if (!old_stage_def->CompileFromFile(Utils::MakePathString(recover_path, "xv2_stage_def.xml")))
+        {
+            delete old_stage_def; old_stage_def = nullptr;
+            return false;
+        }
+    }
+
+    // First buiild translation map, and remove invalid entries
+    bool done = false;
+    std::unordered_map<uint32_t, uint32_t> tr_map; // Old-> new
+    while (!done)
+    {
+        done = true;
+
+        for (const Xv2StageSlot &slot : os)
+        {
+            Xv2Stage *olds = old_stage_def->GetStageBySsid(slot.stage);
+            if (!olds)
+            {
+                os.RemoveSlots(slot.stage);
+                done = false;
+                break;
+            }
+
+            Xv2Stage *news = game_stage_def->GetStageByCode(olds->code);
+            if (!news || news->ssid < 0)
+            {
+                os.RemoveSlots(slot.stage);
+                done = false;
+                break;
+            }
+
+            tr_map[slot.stage] = news->ssid;
+        }
+    }
+
+    // Do actual id translation
+    for (Xv2StageSlot &slot : os)
+    {
+        auto it = tr_map.find(slot.stage);
+        if (it != tr_map.end())
+        {
+            slot.stage = it->second;
+        }
+    }
+
+    // Now insert any new vanilla stage (if any)
+    for (const Xv2StageSlot &slot : *game_stage_slots_file)
+    {
+        Xv2Stage *s = game_stage_def->GetStageBySsid(slot.stage);
+        if (!s || !Xenoverse2::IsForbiddenNewStageName(s->code))
+            continue;
+
+        std::vector<Xv2StageSlot *> ss;
+        if (os.FindSlots(slot.stage, ss) == 0)
+        {
+            size_t lv = FindLastVanillaStage(os);
+            if (lv == (size_t)-1)
+                continue;
+
+            os.PlaceAtPos(lv+1, slot);
+        }
+    }
+
+    // Commit file
+    return xv2fs->SaveFile(&os, Utils::MakePathString("data", fn));
+}
+
+void MainWindow::RestoreUiExtensions(const std::string &recover_path)
+{
+    // Optionally recover the UI extensions (only if installed && if they still work for this version
+    size_t size;
+    uint8_t *buf = Utils::ReadFile(Utils::MakePathString(recover_path, "ui/iggy/POPUP_PAUSE.iggy"), &size, false);
+    bool found = false;
+
+    if (buf)
+    {
+        for (size_t i = 0; i < size-strlen(XV2_PATCHER_AS3_TAG_PAUSE)-1; i++)
+        {
+            if (memcmp(buf+i, XV2_PATCHER_AS3_TAG_PAUSE, strlen(XV2_PATCHER_AS3_TAG_PAUSE)) == 0)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        delete[] buf;
+        return;
+    }
+
+    xv2fs->WriteFile("data/ui/iggy/POPUP_PAUSE.iggy", buf, size);
+    delete[] buf;
+}
+
+static void CollectModsCms(const std::vector<std::string> &paths, std::unordered_set<std::string> &cms_set)
+{
+    // The purpose of this function is to collect cms of all mods in advance so that the x2m skill assign id cms fake entries know in advance which names not to use.
+    for (const std::string &file : paths)
+    {
+        if (!Utils::EndsWith(file, ".x2d", false))
+            continue;
+
+        X2mFile x2d;
+        if (!x2d.LoadFromFile(file) || x2d.GetType() != X2mType::NEW_CHARACTER)
+            continue;
+
+        cms_set.insert(x2d.GetEntryName());
+    }
+}
+
+void MainWindow::RestorePart2(const QString &recover_path)
+{    
+    // Clear variables modified by the LoadVisitor
+    installed_mods.clear();
+    qc.RemoveAllMods();
+    sev_hl_table.clear();
+    sev_ll_table.clear();
+    ttb_hl_table.clear();
+    ttb_ll_table.clear();
+
+    std::string rp_std = Utils::QStringToStdString(recover_path, true);
+
+    log_dlg = new LogDialog(this);
+    log_dlg->setWindowTitle("X2M Install Restoration");
+    log_dlg->Resize(400, 400);
+    log_dlg->show();
+
+    redirect_uprintf(log_window);
+    redirect_dprintf(log_window_error);
+    UPRINTF("<b>Will try to restore installation from %s</b>", rp_std.c_str());
+    DPRINTF("DO NOT CLOSE THIS WINDOW UNTIL DONE<br><br>");
+    QApplication::processEvents();
+
+    std::vector<std::string> paths;
+    std::unordered_set<std::string> cms_set;
+
+    Utils::ListFiles(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, paths);
+    CollectModsCms(paths, cms_set);
+
+    int success = 0;
+    int errors = 0;
+
+    X2mFile::SetDummyMode(rp_std, cms_set);
+
+    // This order is not arbitrary, and is based on the fact that x2d files have their attachment files dummyed (they get downgraded to "links")
+    // Costumes don't have depends. Skills can have costumes (transformation). Characters can have skills.
+    // Replace are their own thing and quests can have any arbitrary attachment
+    // Even if the "delayed assigning" of the installer would allow for a rearrange, there are two things to consider:
+    // 1) The skill assignment algorithm needs to create fake cms entries once in a while, and these cms id need to be <= 500 for technical reasons,
+    // so skills definitely need to be installed before characters.
+    // 2) Quests depends are not optional, so everything needs to be installed before quests.
+    // TLDR, best order.
+    std::vector<std::string> failures;
+    RestoreMods(paths, X2mType::NEW_COSTUME, "costume", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_SKILL, "skill", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_CHARACTER, "character", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_STAGE, "stage", success, errors, failures);
+    RestoreMods(paths, X2mType::REPLACER, "replacer", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_QUEST, "quest", success, errors, failures);
+
+    // Fail mods must be removed at the end
+    for (const std::string &fail : failures)
+        Utils::RemoveFile(fail);
+
+    UPRINTF("--------------------------\n");
+
+    if (success == 0 && errors == 0)
+    {
+        UPRINTF("There were no mods at all!");
+    }
+    else
+    {
+       UPRINTF("<b>%d mods were restored with success%s.</b><br>", success, (errors==0) ? " (all of them!)" : "");
+       if (errors > 0)
+           DPRINTF("%d mods failed to be restored.\n", errors);
+    }
+
+    UPRINTF("Restoring character slots...");
+    bool restore_char_slots = RestoreCharaSlots(rp_std);
+    if (restore_char_slots)
+        UPRINTF("<b>Success!</b><br>");
+    else
+        DPRINTF("Failure!\n");
+
+    UPRINTF("Restoring stage slots...");
+    bool restore_stage_slots = RestoreStageSlots(rp_std, false);
+    if (restore_stage_slots)
+        UPRINTF("<b>Success!</b><br>");
+    else
+        DPRINTF("Failure!\n");
+
+    UPRINTF("Restoring stage slots (local)...");
+    bool restore_stage_slots_local = RestoreStageSlots(rp_std, true);
+    if (restore_stage_slots_local)
+        UPRINTF("<b>Success!</b><br>");
+    else
+        DPRINTF("Failure!\n");
+
+    RestoreUiExtensions(rp_std);
+
+    UPRINTF("\n");
+    UPRINTF("<b>Program will quit once you close this window.</b>");
+
+    redirect_uprintf((RedirectFunc)nullptr);
+    redirect_dprintf((RedirectFunc)nullptr);
+
+    QMessageBox box;
+    QString text;
+
+    text = "The process has finished!<br><br>";
+    text += QString("<b>Summary: %1/%2 mods were installed with success.</b><br>").arg(success).arg(success+errors);
+    text += QString("<b>Character slots: %1; Stage slots: %2; Stage slots(local): %3.</b><br><br>").
+            arg((restore_char_slots) ? "Success" : "Error").arg((restore_stage_slots) ? "Success" : "Error").arg((restore_stage_slots_local) ? "Success" : "Error");
+    text += "You can now close the log window at any time, or review it.<br>";
+    text += QString("<br><br>What do you want to do with the old data folder (%1)?").arg(recover_path);
+    box.setText(text);
+
+    QPushButton *recycle = box.addButton("Send to recycle bin", QMessageBox::ActionRole);
+    QPushButton *remove = box.addButton("Delete it", QMessageBox::ActionRole);
+    box.addButton("Keep it", QMessageBox::ActionRole);
+    box.setDefaultButton(recycle);
+
+    box.exec();
+
+    // UGLY HACK to close the awb files that make impossible to remove the old directory
+    X2mFile::RecoverCloseAwb();
+
+    if (box.clickedButton() == recycle)
+    {
+        if (Utils::RemoveDirFull(rp_std, true, true, false))
+        {
+            UPRINTF("Done!");
+        }
+        else
+        {
+            DPRINTF("Failed to send the foler to recycle bin.");
+        }
+    }
+    else if (box.clickedButton() == remove)
+    {
+        if (Utils::RemoveDirFull(rp_std, true, false, false))
+        {
+            UPRINTF("Done!");
+        }
+        else
+        {
+            DPRINTF("Failed to delete the folder.");
+        }
+    }
+
+    while (log_dlg->isVisible())
+    {
+         QApplication::processEvents();
+    }
 }
 
 bool MainWindow::MultipleModsQuestion()
@@ -4023,7 +4667,7 @@ void MainWindow::on_actionExit_triggered()
 void MainWindow::on_actionAbout_triggered()
 {    
     /*size_t size;
-    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.20.1_as_dump.exe", &size);
+    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.21.1_dirty.exe", &size);
 
     if (!buf)
     {
@@ -4103,12 +4747,21 @@ void MainWindow::on_actionAbout_triggered()
     //                         buf+0xEFEA30,
     //                         eve_dump))
     // 1.20.1
-    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7047C0000, buf, buf+0xED2BC0,
-                                 XV2_ORIGINAL_NUM_SS_STAGES, buf+0xED3730,
-                                 buf+0xED37D0,
-                                 buf+0xEA74E0,
-                                 buf+0x13C7B70,
-                                 buf+0xF022D0,
+    //if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7047C0000, buf, buf+0xED2BC0,
+    //                             XV2_ORIGINAL_NUM_SS_STAGES, buf+0xED3730,
+    //                             buf+0xED37D0,
+    //                             buf+0xEA74E0,
+    //                             buf+0x13C7B70,
+    //                             buf+0xF022D0,
+    //                             eve_dump))
+    // 1.21.1
+    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7DD7C0000, buf, buf+0xFB52E0,
+                                 XV2_ORIGINAL_NUM_SS_STAGES, buf+0xFB5E50,
+                                 buf+0xFB5EF0,
+                                 buf+0xF7CD40,
+                                 buf+0xF81F60,
+                                 buf+0x14EDBD0,
+                                 buf+0xFE5AC0,
                                  eve_dump))
         return;
 
@@ -4553,6 +5206,30 @@ void MainWindow::on_actionFind_and_delete_dead_ids_triggered()
         }
     }
 
+    std::vector<std::string> &cell_maxes = game_prebaked->GetCellMaxes();
+
+    for (size_t i = 0; i < cell_maxes.size(); i++)
+    {
+        const std::string &cm = cell_maxes[i];
+
+        if (!game_cms->FindEntryByName(cm))
+        {
+            found++;
+
+            QString message = QString("Character %1 referenced in the Cell Maxes list doesn't exist in the cms.\n"
+                                      "Do you want to delete it?\n").arg(Utils::StdStringToQString(cm));
+
+            if (QMessageBox::question(this, "Delete it?", message,
+                                      QMessageBox::StandardButtons(QMessageBox::Yes|QMessageBox::No),
+                                      QMessageBox::Yes) == QMessageBox::Yes)
+            {
+                cell_maxes.erase(cell_maxes.begin()+i);
+                i--;
+                deleted++;
+            }
+        }
+    }
+
     std::vector<uint32_t> &auto_btl_portrait_list = game_prebaked->GetAutoBtlPortraitList();
 
     for (size_t i = 0; i < auto_btl_portrait_list.size(); i++)
@@ -4632,8 +5309,7 @@ void MainWindow::on_actionFind_and_delete_dead_ids_triggered()
 
 void MainWindow::on_actionClear_installation_triggered()
 {
-    if (ClearInstallation(false))
-        qApp->exit();
+    ClearInstallation(false);
 }
 
 bool MainWindow::DeleteEmptyDirVisitor(const std::string &path, bool, void *param)
@@ -4697,20 +5373,6 @@ static bool convert_visitor(const std::string &path, void *param)
     std::vector<std::string> *list_files = (std::vector<std::string> *)param;
     list_files->push_back(path);
     return true;
-}
-
-static LogDialog *log_dlg;
-
-static void log_window(const char *dbg)
-{
-    log_dlg->Append(dbg);
-}
-
-static void log_window_error(const char *dbg)
-{
-    log_dlg->SetNextBold();
-    log_dlg->SetNextColor("red");
-    log_dlg->Append(dbg);
 }
 
 bool MainWindow::ConvertModEntry(X2mFile *x2m, const std::string &new_entry)

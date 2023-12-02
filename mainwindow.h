@@ -23,6 +23,12 @@ public:
 
     bool Initialize();
     bool ClearInstallation(bool special_mode);
+    void RestorePart1();    
+    void RestoreMods(const std::vector<std::string> &paths, X2mType type, const std::string &label, int &global_success, int &global_errors, std::vector<std::string> &failures);
+    bool RestoreCharaSlots(const std::string &recover_path);
+    bool RestoreStageSlots(const std::string &recover_path, bool local);
+    void RestoreUiExtensions(const std::string &recover_path);
+    void RestorePart2(const QString &recover_path);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -124,17 +130,19 @@ private:
     void ClearAttachments(std::vector<X2mFile *> &attachments);
     void PostProcessSkill(X2mFile *x2m);
     void PostProcessCostume(X2mFile *x2m);
-    ModEntry *InstallMod(const QString &path, ModEntry *reinstall_mod, bool silent_mode);
+    ModEntry *InstallMod(const QString &path, ModEntry *reinstall_mod, bool silent_mode, bool restore_mode=false);
 
     void RemoveDeadItem();
     void PostProcessCostumeUninstall(X2mFile *x2m, const X2mCostumeEntry &costume);
-    bool UninstallMod(const ModEntry &mod, bool remove_empty_dir);
+    bool UninstallMod(const ModEntry &mod, bool remove_empty_dir, bool restore_mode=false);
 
     bool MultipleModsQuestion();
 
     static bool DeleteEmptyDirVisitor(const std::string &path, bool, void *param);
 
     bool ConvertModEntry(X2mFile *x2m, const std::string &new_entry);
+
+    void RestartProgram(const QStringList &args = {});
 };
 
 #endif // MAINWINDOW_H

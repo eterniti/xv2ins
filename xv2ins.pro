@@ -13,6 +13,8 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
+    ../eternity_common/DBXV2/BdmFile.cpp \
+    ../eternity_common/DBXV2/BpeFile.cpp \
         mainwindow.cpp \
     debug.cpp \
     ../eternity_common/tinyxml/tinystr.cpp \
@@ -100,6 +102,8 @@ SOURCES += main.cpp\
     ../eternity_common/DBXV2/ErsFile.cpp
 
 HEADERS  += mainwindow.h \
+    ../eternity_common/DBXV2/BdmFile.h \
+    ../eternity_common/DBXV2/BpeFile.h \
     ../eternity_common/crypto/md5.h \
     ../eternity_common/crypto/rijndael.h \
     ../eternity_common/crypto/sha1.h \
