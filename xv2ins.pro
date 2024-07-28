@@ -138,7 +138,9 @@ HEADERS  += mainwindow.h \
     ../eternity_common/DBXV2/Xv2Fs.h \
     ../eternity_common/ZipFile.h \
     ../xv2ins_common/Config.h \
+    ../xv2ins_common/itemlistdetailsblob.h \
     ../xv2ins_common/listdialog.h \
+    ../xv2ins_common/popuppauseiggyblob.h \
     ../xv2ins_common/requerimentsdialog.h \
     ../xv2ins_common/xv2ins_common.h \
     ../eternity_common/DBXV2/CsoFile.h \

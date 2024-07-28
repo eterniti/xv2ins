@@ -17,9 +17,7 @@
 #include "EmbFile.h"
 #include "xv2ins_common.h"
 #include "Config.h"
-#include "listdialog.h"
 #include "cssdialog.h"
-#include "waitdialog.h"
 #include "cmsentrychoosedialog.h"
 #include "compiledialog.h"
 #include "stageseledialog.h"
@@ -160,7 +158,7 @@ bool MainWindow::Initialize()
     {
         clean_install = true;
     }
-    else if (!game_cms->FindEntryByName("SIO") || !game_cms->FindEntryByName("SIP"))
+    else if (!game_cms->FindEntryByName("SVE") || !game_cms->FindEntryByName("EIB"))
     {
         clean_install = true;
     }
@@ -530,6 +528,11 @@ void MainWindow::AddModToQuestCompiler(X2mFile &x2m, Xv2QuestCompiler &qc, const
         // TODO
         return;
     }
+    else if (mod.type == X2mType::NEW_SUPERSOUL)
+    {
+        // TODO
+        return;
+    }
 
     qc.PushMod(Utils::ToLowerCase(x2m.GetModGuid()), mod);
 }
@@ -676,10 +679,20 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
             mod.entry_name = Utils::StdStringToQString(x2m.GetEntryName());
             mod.type = x2m.GetType();
 
-            if (x2m.GetType() == X2mType::NEW_CHARACTER && x2m.HasCharaSkillDepends())
+            if (x2m.GetType() == X2mType::NEW_CHARACTER && (x2m.HasCharaSkillDepends() || x2m.HasCharaSsDepends()))
             {
-                mod.depends = x2m.GetAllCharaSkillDepends();
-                mod.skill_sets = x2m.GetAllSkillSets();
+                if (x2m.HasCharaSkillDepends())
+                {
+                    mod.depends = x2m.GetAllCharaSkillDepends();
+                    mod.skill_sets = x2m.GetAllSkillSets();
+                }
+
+                if (x2m.HasCharaSsDepends())
+                {
+                    std::vector<X2mDepends> &ss_dep = x2m.GetAllCharaSsDepends();
+                    mod.depends.insert(mod.depends.end(), ss_dep.begin(), ss_dep.end());
+                    mod.psc_entries = x2m.GetAllPscEntries();
+                }
             }
             else if (x2m.GetType() == X2mType::NEW_SKILL && x2m.HasSkillCostumeDepend())
             {
@@ -687,6 +700,11 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
                 mod.depends.push_back(x2m.GetSkillCostumeDepend());
                 mod.skill_entry.clear();
                 mod.skill_entry.push_back(std::pair<CusSkill, X2mSkillType>(x2m.GetSkillEntry(), x2m.GetSkillType()));
+            }
+            else if (x2m.GetType() == X2mType::NEW_SUPERSOUL && x2m.HasSSSkillDepend())
+            {
+                mod.depends.clear();
+                mod.depends.push_back(x2m.GetSSSkillDepend());
             }
 
             mod.item = new QTreeWidgetItem();
@@ -723,21 +741,7 @@ void MainWindow::LoadInstalledMods()
 {
     process_selection_change = false;
     installed_mods.clear();
-    Utils::VisitDirectory(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, LoadVisitor, this);
-
-    // TO BE deleted on future version
-    if (!config.idb_fix_applied)
-    {
-        config.idb_fix_applied = true;
-        config.Save();
-
-        //DPRINTF("%d skill mods and %d costume mods fixed.\n", num_skill_mods_fixed_381, num_costume_mods_fixed_381);
-
-        if (num_skill_mods_fixed_381 > 0 || num_costume_mods_fixed_381 > 0)
-        {
-            Xenoverse2::CommitIdb(true, true, false, true);
-        }
-    }
+    Utils::VisitDirectory(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, LoadVisitor, this);    
 
     UpdateStatus();
     process_selection_change = true;
@@ -992,8 +996,11 @@ void MainWindow::ClearAttachments(std::vector<X2mFile *> &attachments)
 void MainWindow::PostProcessSkill(X2mFile *x2m)
 {
     // In this function, we will assign the skill id to characters mods that linked this skill before the skill was installed
+    // Also, for blast skills, assing the so called "model" to super souls
 
     bool commit = false;
+    bool commit_talisman = false;
+    bool ss_intended = (x2m->GetSkillType() == X2mSkillType::BLAST && x2m->BlastSkillSsIntended());
 
     uint8_t skill_guid[16];
     Utils::String2GUID(skill_guid, x2m->GetModGuid());
@@ -1064,11 +1071,42 @@ void MainWindow::PostProcessSkill(X2mFile *x2m)
                 }
             }
         }
+        else if (mod.depends.size() > 0 && mod.type == X2mType::NEW_SUPERSOUL && ss_intended)
+        {
+            if (memcmp(skill_guid, mod.depends.front().guid, 16) == 0)
+            {
+                std::string ss_guid_str = Utils::QStringToStdString(mod.guid);
+                uint8_t ss_guid[16];
+                Utils::String2GUID(ss_guid, ss_guid_str);
+
+                X2mSuperSoul *ss = x2m->FindInstalledSS(ss_guid);
+                if (ss)
+                {
+                    CusSkill *skill = X2mFile::FindInstalledSkill(skill_guid, X2mSkillType::BLAST);
+                    if (skill)
+                    {
+                        if (Xenoverse2::SetBlastToTalisman(ss->idb_id, skill->id2, true))
+                        {
+                            commit_talisman = true;
+                        }
+                        else
+                        {
+                            DPRINTF("SetBlastToTalisman failed.\n");
+                        }
+                    }
+                }
+            }
+        }
     }
 
     if (commit && !Xenoverse2::CommitSystemFiles(false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessSkill.\n");
+    }
+
+    if (commit_talisman && !Xenoverse2::CommitIdb(false, false, true, false))
+    {
+        DPRINTF("CommitIdb failed in PostProcessSkill.\n");
     }
 }
 
@@ -1120,6 +1158,69 @@ void MainWindow::PostProcessCostume(X2mFile *x2m)
     if (commit && !Xenoverse2::CommitSystemFiles(false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessCostume.\n");
+    }
+}
+
+void MainWindow::PostProcessSuperSoul(X2mFile *x2m)
+{
+    // In this function, we will assign the supersoul id to characters mods that linked this ss before the ss was installed
+    bool commit = false;
+
+    uint8_t ss_guid[16];
+    Utils::String2GUID(ss_guid, x2m->GetModGuid());
+
+    for (const ModEntry &mod : installed_mods)
+    {
+        if (mod.depends.size() > 0 && mod.type == X2mType::NEW_CHARACTER)
+        {
+            uint16_t ss_id = 0xFFFF;
+
+            for (const X2mDepends &dep : mod.depends)
+            {
+                if (dep.type == X2mDependsType::SUPERSOUL && memcmp(dep.guid, ss_guid, 16) == 0)
+                {
+                    ss_id = (uint16_t)dep.id;
+                    break;
+                }
+            }
+
+            if (ss_id == 0xFFFF)
+                continue;
+
+            CmsEntry *cms_entry = game_cms->FindEntryByName(Utils::QStringToStdString(mod.entry_name));
+            if (!cms_entry)
+                continue;
+
+            std::vector<PscSpecEntry *> psc_specs;
+            game_psc->FindAllSpecs(cms_entry->id, psc_specs);
+
+            if (psc_specs.size() != (mod.psc_entries.size() * game_psc->GetNumConfigs()))
+            {
+                DPRINTF("%s: warning not expected number of psc entries (linking to \"%s\" cannot be done).", FUNCNAME, Utils::QStringToStdString(mod.name).c_str());
+                continue;
+            }
+
+            for (size_t i = 0; i < mod.psc_entries.size(); i++)
+            {
+                const PscSpecEntry &orig_spec = mod.psc_entries[i];
+
+                for (size_t c = 0; c < game_psc->GetNumConfigs(); c++)
+                {
+                    PscSpecEntry *game_spec = psc_specs[i + c*mod.psc_entries.size()];
+
+                    if (orig_spec.talisman == ss_id && game_spec->talisman == 0xFFFFFFFF)
+                    {
+                        game_spec->talisman = x2m->GetSSItem().idb.id;
+                        commit = true;                        
+                    }
+                }
+            }
+        }
+    }
+
+    if (commit && !Xenoverse2::CommitSystemFiles(false))
+    {
+        DPRINTF("CommitSystemFiles failed in PostProcessSkill.\n");
     }
 }
 
@@ -1246,6 +1347,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
     std::vector<X2mFile *> attachments;
     QString depends_message;
     std::vector<CusSkillSet> temp_skill_sets; // We only need this for chara mods with skill depends
+    std::vector<PscSpecEntry> temp_psc_entries; // We only need this for chara mods with skill depends
     std::vector<CusSkill> temp_skill_entry; // We only need this for skill mods with costume depends
 
     if (type == X2mType::NEW_CHARACTER)
@@ -1280,23 +1382,56 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
                         attachments.push_back(skill_x2m);
                     }
                 }
-            } // end for
+            } // end for            
+        }
 
-            if (attachments.size() > 0 && !reinstall_mod)
+        if (x2m.HasCharaSsDepends())
+        {
+            temp_psc_entries = x2m.GetAllPscEntries(); // We need a copy before id-assign
+
+            for (size_t i = 0 ; i < x2m.GetNumCharaSsDepends(); i++)
             {
-                if (attachments.size() == 1)
+                if (x2m.CharaSsDependsHasAttachment(i))
                 {
-                    depends_message = "The following mod will also be installed/updated:\n";
-                }
-                else
-                {
-                    depends_message = "The following mods will also be installed/updated:\n";
-                }
+                    const X2mDepends &dep = x2m.GetCharaSsDepends(i);
+                    X2mFile *ss_x2m = x2m.LoadCharaSsDependsAttachment(dep.guid);
 
-                for (X2mFile *skill_x2m : attachments)
-                {
-                    depends_message += "- " + Utils::StdStringToQString(skill_x2m->GetModName(), false) + " (by " + Utils::StdStringToQString(skill_x2m->GetModAuthor(), false) + ")\n";
+                    if (!ss_x2m)
+                        continue;
+
+                    ModEntry *ss_mod = FindModByGuid(Utils::StdStringToQString(ss_x2m->GetModGuid()));
+                    if (ss_mod)
+                    {
+                        if (ss_mod->version >= ss_x2m->GetModVersion())
+                        {
+                            delete ss_x2m;
+                            continue;
+                        }
+
+                        attachments.push_back(ss_x2m);
+                    }
+                    else
+                    {
+                        attachments.push_back(ss_x2m);
+                    }
                 }
+            } // end for
+        }
+
+        if (attachments.size() > 0 && !reinstall_mod)
+        {
+            if (attachments.size() == 1)
+            {
+                depends_message = "The following mod will also be installed/updated:\n";
+            }
+            else
+            {
+                depends_message = "The following mods will also be installed/updated:\n";
+            }
+
+            for (X2mFile *skill_x2m : attachments)
+            {
+                depends_message += "- " + Utils::StdStringToQString(skill_x2m->GetModName(), false) + " (by " + Utils::StdStringToQString(skill_x2m->GetModAuthor(), false) + ")\n";
             }
         }
     }
@@ -1381,6 +1516,43 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
                 {
                     depends_message += "- " + Utils::StdStringToQString(skill_x2m->GetModName(), false) + " (by " + Utils::StdStringToQString(skill_x2m->GetModAuthor(), false) + ")\n";
                 }
+            }
+        }
+    }
+    else if (x2m.GetType() == X2mType::NEW_SUPERSOUL)
+    {
+        if (x2m.HasSSSkillDepend())
+        {
+            if (x2m.SSSkillDependHasAttachment())
+            {
+                X2mFile *ss_x2m = x2m.LoadSSSkillDependAttachment();
+                if (ss_x2m)
+                {
+                    ModEntry *ss_mod = FindModByGuid(Utils::StdStringToQString(ss_x2m->GetModGuid()));
+                    if (ss_mod)
+                    {
+                        if (ss_mod->version >= ss_x2m->GetModVersion())
+                        {
+                            delete ss_x2m;
+                        }
+                        else
+                        {
+                            attachments.push_back(ss_x2m);
+                        }
+                    }
+                    else
+                    {
+                        attachments.push_back(ss_x2m);
+                    }
+                }
+            }
+
+            if (attachments.size() != 0 && !reinstall_mod)
+            {
+                X2mFile *ss_x2m = attachments.front();
+
+                depends_message = "The following mod will also be installed/updated:\n";
+                depends_message += "- " + Utils::StdStringToQString(ss_x2m->GetModName(), false) + " (by " + Utils::StdStringToQString(ss_x2m->GetModAuthor(), false) + ")\n";
             }
         }
     }
@@ -1915,6 +2087,11 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         PHASE_COMMIT_STAGE_SLOTS, /* For stage */
         PHASE_COMMIT_VFX, /* For vfx */
         PHASE_COMMIT_BGM, /* For stage */
+        PHASE_COMMIT_SS_NAMES, /* For super soul */
+        PHASE_COMMIT_SS_DESCS, /* For super soul */
+        PHASE_COMMIT_SS_HOWS, /* For super soul */
+        PHASE_COMMIT_SS_IDB, /* For super soul */
+        PHASE_COMMIT_SS_DFILE, /* For super soul */
         PHASE_COMMIT_SYSTEM_FILES,
         PHASE_COMMIT_SOUND,
         PHASE_COMMIT_COMMON_DIALOGUE,
@@ -2407,6 +2584,40 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
         phase = PHASE_FILE_JUNGLE;
     }
+    else if (type == X2mType::NEW_SUPERSOUL)
+    {
+        if (!x2m.InstallSSName())
+        {
+            DPRINTF("InstallSSName failed.\n");
+            goto out;
+        }
+
+        if (!x2m.InstallSSDesc())
+        {
+            DPRINTF("InstallSSDesc failed.\n");
+            goto out;
+        }
+
+        if (!x2m.InstallSSHow())
+        {
+            DPRINTF("InstallSSHow failed.\n");
+            goto out;
+        }
+
+        if (!x2m.InstallSSIdb())
+        {
+            DPRINTF("InstallCostumeIdb failed.\n");
+            goto out;
+        }
+
+        if (!x2m.InstallSSFile())
+        {
+            DPRINTF("InstallSSFile failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_FILE_JUNGLE;
+    }
     else // Replacer mod
     {
         phase = PHASE_FILE_JUNGLE;
@@ -2545,26 +2756,40 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
         phase = PHASE_COMMIT_SKILL_NAMES;
 
-        if (!Xenoverse2::CommitSkillNames())
+        if (x2m.GetSkillType() != X2mSkillType::BLAST)
         {
-            DPRINTF("CommitSkillNames failed.\n");
-            goto out;
+            if (!Xenoverse2::CommitSkillNames())
+            {
+                DPRINTF("CommitSkillNames failed.\n");
+                goto out;
+            }
+
+            phase = PHASE_COMMIT_SKILL_DESCS;
+
+            if (!Xenoverse2::CommitSkillDescs())
+            {
+                DPRINTF("CommitSkillDescs failed.\n");
+                goto out;
+            }
+
+            phase = PHASE_COMMIT_SKILL_HOWS;
+
+            if (!Xenoverse2::CommitSkillHows())
+            {
+                DPRINTF("CommitSkillHows failed.\n");
+                goto out;
+            }
         }
-
-        phase = PHASE_COMMIT_SKILL_DESCS;
-
-        if (!Xenoverse2::CommitSkillDescs())
+        else
         {
-            DPRINTF("CommitSkillDescs failed.\n");
-            goto out;
-        }
-
-        phase = PHASE_COMMIT_SKILL_HOWS;
-
-        if (!Xenoverse2::CommitSkillHows())
-        {
-            DPRINTF("CommitSkillHows failed.\n");
-            goto out;
+            if (x2m.BlastSkillSsIntended())
+            {
+                if (!Xenoverse2::CommitShopText())
+                {
+                    DPRINTF("CommitShopText failed.\n");
+                    goto out;
+                }
+            }
         }
 
         phase = PHASE_COMMIT_SKILL_BTLHUD_TEXT;
@@ -2752,6 +2977,48 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
             goto out;
         }
     }
+    else if (type == X2mType::NEW_SUPERSOUL)
+    {
+        phase = PHASE_COMMIT_SS_NAMES;
+
+        if (!Xenoverse2::CommitTalismanNames())
+        {
+            DPRINTF("CommitTalismanNames failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_COMMIT_SS_DESCS;
+
+        if (!Xenoverse2::CommitTalismanDescs())
+        {
+            DPRINTF("CommitTalismanDescs failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_COMMIT_SS_HOWS;
+
+        if (!Xenoverse2::CommitTalismanHows())
+        {
+            DPRINTF("CommitTalismanHows failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_COMMIT_SS_IDB;
+
+        if (!Xenoverse2::CommitIdb(false, false, true, false))
+        {
+            DPRINTF("CommitIdb failed.\n");
+            goto out;
+        }
+
+        phase = PHASE_COMMIT_SS_DFILE;
+
+        if (!Xenoverse2::CommitCostumeFile())
+        {
+            DPRINTF("CommitCostumeFile failed.\n");
+            goto out;
+        }
+    }
 
     //UPRINTF("[Aparently success]");
 
@@ -2923,8 +3190,16 @@ out:
             {
                 if (x2m.UninstallSkillName())
                 {
-                    if (!Xenoverse2::CommitSkillNames() || !Xenoverse2::CommitBtlHudText())
-                        undo_success = false;
+                    if (x2m.GetSkillType() != X2mSkillType::BLAST)
+                    {
+                        if (!Xenoverse2::CommitSkillNames() || !Xenoverse2::CommitBtlHudText())
+                            undo_success = false;
+                    }
+                    else
+                    {
+                        if (x2m.BlastSkillSsIntended() && !Xenoverse2::CommitShopText())
+                            undo_success = false;
+                    }
                 }
                 else
                 {
@@ -3158,7 +3433,74 @@ out:
                 }
             }
 
-        } // End type
+        }
+        else if (type == X2mType::NEW_SUPERSOUL)
+        {
+            if (phase >= PHASE_COMMIT_SS_NAMES)
+            {
+                if (x2m.UninstallSSName())
+                {
+                    if (!Xenoverse2::CommitTalismanNames())
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+
+            if (phase >= PHASE_COMMIT_SS_DESCS)
+            {
+                if (x2m.UninstallSSDesc())
+                {
+                    if (!Xenoverse2::CommitTalismanDescs())
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+
+            if (phase >= PHASE_COMMIT_SS_HOWS)
+            {
+                if (x2m.UninstallSSHow())
+                {
+                    if (!Xenoverse2::CommitTalismanHows())
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+
+            if (phase >= PHASE_COMMIT_SS_IDB)
+            {
+                if (x2m.UninstallSSIdb())
+                {
+                    if (!Xenoverse2::CommitIdb(false, false, true, false))
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+
+            if (phase >= PHASE_COMMIT_SS_DFILE)
+            {
+                if (x2m.UninstallSSFile())
+                {
+                    if (!Xenoverse2::CommitCostumeFile())
+                        undo_success = false;
+                }
+                else
+                {
+                    undo_success = false;
+                }
+            }
+        }// End type
 
         if (undo_success)
         {
@@ -3258,10 +3600,26 @@ out:
             mod->depends = x2m.GetAllCharaSkillDepends();
             mod->skill_sets = temp_skill_sets;
         }
+
+        if (temp_psc_entries.size() > 0)
+        {
+            std::vector<X2mDepends> &ss_depends = x2m.GetAllCharaSsDepends();
+            mod->depends.insert(mod->depends.end(), ss_depends.begin(), ss_depends.end());
+            mod->psc_entries = temp_psc_entries;
+        }
     }
     else if (x2m.GetType() == X2mType::NEW_COSTUME)
     {
         PostProcessCostume(&x2m); // process skill-->costume links
+    }
+    else if (x2m.GetType() == X2mType::NEW_SUPERSOUL)
+    {
+        PostProcessSuperSoul(&x2m); // Process char->ss links
+
+        if (x2m.HasSSSkillDepend())
+        {
+            mod->depends.push_back(x2m.GetSSSkillDepend());
+        }
     }
 
     if (!XV2Patcher::SetConfigIfNeeded())
@@ -3319,6 +3677,49 @@ void MainWindow::PostProcessCostumeUninstall(X2mFile *x2m, const X2mCostumeEntry
     if (commit && !Xenoverse2::CommitSystemFiles(false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessCostumeUninstall.\n");
+    }
+}
+
+void MainWindow::PostProcessSkillUninstall(X2mFile *x2m)
+{
+    if (x2m->GetSkillType() != X2mSkillType::BLAST || !x2m->BlastSkillSsIntended())
+        return;
+
+    bool commit = false;
+
+    uint8_t skill_guid[16];
+    Utils::String2GUID(skill_guid, x2m->GetModGuid());
+
+    for (const ModEntry &mod : installed_mods)
+    {
+        if (mod.depends.size() > 0 && mod.type == X2mType::NEW_SUPERSOUL && memcmp(skill_guid, mod.depends.front().guid, 16) == 0)
+        {
+            std::string ss_guid_str = Utils::QStringToStdString(mod.guid);
+            uint8_t ss_guid[16];
+            Utils::String2GUID(ss_guid, ss_guid_str);
+
+            X2mSuperSoul *ss = x2m->FindInstalledSS(ss_guid);
+            if (ss)
+            {
+               if (!game_talisman_idb && !Xenoverse2::InitIdb(false, false, true, false, false, false, false, false))
+               {
+                   DPRINTF("InitIdb failed in PostProcessSkillUninstall");
+                   return;
+               }
+
+               IdbEntry *entry = game_talisman_idb->FindEntryByID(ss->idb_id);
+               if (entry)
+               {
+                   entry->model = 0;
+                   commit = true;
+               }
+            }
+        }
+    }
+
+    if (commit && !Xenoverse2::CommitIdb(false, false, true, false))
+    {
+        DPRINTF("CommitIdb failed in PostProcessSkillUninstall.\n");
     }
 }
 
@@ -3479,7 +3880,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
         {
             DPRINTF("Cannot find installed skill in the system.\nDid you delete some X2M_SKILL.ini file?");
             return false;
-        }
+        }        
 
         // Uninstall pup must be called before uninstall cus
         if (!x2d.UninstallPupSkill())
@@ -3541,7 +3942,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
     {
         X2mCostumeEntry *temp = x2d.FindInstalledCostume();
         if (temp)
-            uninstall_cost_entry = *temp;
+            uninstall_cost_entry = *temp; // Copy
 
         if (!x2d.UninstallCostumePartSets())
         {
@@ -3702,6 +4103,38 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
 
         qc.SetTestMode(false);
     }
+    else if (type == X2mType::NEW_SUPERSOUL)
+    {
+        if (!x2d.UninstallSSName())
+        {
+            DPRINTF("UninstallSSName failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallSSDesc())
+        {
+            DPRINTF("UninstallSSDesc failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallSSHow())
+        {
+            DPRINTF("UninstallSSHow failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallSSIdb())
+        {
+            DPRINTF("UninstallSSIdb failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallSSFile())
+        {
+            DPRINTF("UninstallSSFile failed.\n");
+            return false;
+        }
+    }
 
     if (x2d.JungleExists())
     {
@@ -3770,16 +4203,33 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
     }
     else if (type == X2mType::NEW_SKILL)
     {
-        if (!Xenoverse2::CommitSkillNames())
+        if (x2d.GetSkillType() != X2mSkillType::BLAST)
         {
-            DPRINTF("CommitSkillNames failed (in uninstall).\n");
-            return false;
-        }
+            if (!Xenoverse2::CommitSkillNames())
+            {
+                DPRINTF("CommitSkillNames failed (in uninstall).\n");
+                return false;
+            }
 
-        if (!Xenoverse2::CommitSkillDescs())
+            if (!Xenoverse2::CommitSkillDescs())
+            {
+                DPRINTF("CommitSkillDescs failed (in uninstall).\n");
+                return false;
+            }
+
+            if (!Xenoverse2::CommitSkillHows())
+            {
+                DPRINTF("CommitSkillHows failed (in uninstall).\n");
+                return false;
+            }
+        }
+        else
         {
-            DPRINTF("CommitSkillDescs failed (in uninstall).\n");
-            return false;
+            if (x2d.BlastSkillSsIntended() && !Xenoverse2::CommitShopText())
+            {
+                DPRINTF("CommitShopText failed (in uninstall).\n");
+                return false;
+            }
         }
 
         if (!Xenoverse2::CommitBtlHudText())
@@ -3933,8 +4383,45 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             return false;
         }
     }
+    else if (type == X2mType::NEW_SUPERSOUL)
+    {
+        if (!Xenoverse2::CommitTalismanNames())
+        {
+            DPRINTF("CommitTalismanNames failed (in uninstall).\n");
+            return false;
+        }
 
-    if (x2d.GetType() == X2mType::NEW_COSTUME)
+        if (!Xenoverse2::CommitTalismanDescs())
+        {
+            DPRINTF("CommitTalismanDescs failed (in uninstall).\n");
+            return false;
+        }
+
+        if (!Xenoverse2::CommitIdb(false, false, true, false))
+        {
+            DPRINTF("CommitIdb failed (in uninstall).\n");
+            return false;
+        }
+
+        if (!Xenoverse2::CommitCostumeFile())
+        {
+            DPRINTF("CommitCostumeFile failed (in uninstall).\n");
+            return false;
+        }
+
+        // Psc may change (talisman references removed) so we need this
+        if (!Xenoverse2::CommitSystemFiles(false))
+        {
+            DPRINTF("CommitSystemFiles failed (in uninstall).\n");
+            return false;
+        }
+    }
+
+    if (x2d.GetType() == X2mType::NEW_SKILL)
+    {
+        PostProcessSkillUninstall(&x2d);
+    }
+    else if (x2d.GetType() == X2mType::NEW_COSTUME)
     {
         PostProcessCostumeUninstall(&x2d, uninstall_cost_entry);
     }
@@ -3990,28 +4477,6 @@ bool MainWindow::ClearInstallation(bool special_mode)
 
     bool success = true;
 
-    size_t popup_pause_size;
-    uint8_t *popup_pause = xv2fs->ReadFile("data/ui/iggy/POPUP_PAUSE.iggy", &popup_pause_size);
-    bool found = false;
-
-    if (popup_pause)
-    {
-        for (size_t i = 0; i < popup_pause_size-strlen(XV2_PATCHER_AS3_TAG_PAUSE)-1; i++)
-        {
-            if (memcmp(popup_pause+i, XV2_PATCHER_AS3_TAG_PAUSE, strlen(XV2_PATCHER_AS3_TAG_PAUSE)) == 0)
-            {
-                found = true;
-                break;
-            }
-        }
-    }
-
-    if (!found)
-    {
-        delete[] popup_pause;
-        popup_pause = nullptr;
-    }
-
     if (Utils::RemoveDirFull(data_dir, true, !special_mode && check->isChecked(), false))
     {
         if (!Utils::RemoveDirFull(xv2ins_cfg_dir, true,  !special_mode && check->isChecked(), false))
@@ -4032,12 +4497,6 @@ bool MainWindow::ClearInstallation(bool special_mode)
     if (success)
     {
         UPRINTF("The mod installation has been cleared succesfully. Program will now restart automatically.\n");        
-    }
-
-    if (popup_pause)
-    {
-        xv2fs->WriteFile("data/ui/iggy/POPUP_PAUSE.iggy", popup_pause, popup_pause_size);
-        delete[] popup_pause;
     }
 
     if (success)
@@ -4383,35 +4842,6 @@ bool MainWindow::RestoreStageSlots(const std::string &recover_path, bool local)
     return xv2fs->SaveFile(&os, Utils::MakePathString("data", fn));
 }
 
-void MainWindow::RestoreUiExtensions(const std::string &recover_path)
-{
-    // Optionally recover the UI extensions (only if installed && if they still work for this version
-    size_t size;
-    uint8_t *buf = Utils::ReadFile(Utils::MakePathString(recover_path, "ui/iggy/POPUP_PAUSE.iggy"), &size, false);
-    bool found = false;
-
-    if (buf)
-    {
-        for (size_t i = 0; i < size-strlen(XV2_PATCHER_AS3_TAG_PAUSE)-1; i++)
-        {
-            if (memcmp(buf+i, XV2_PATCHER_AS3_TAG_PAUSE, strlen(XV2_PATCHER_AS3_TAG_PAUSE)) == 0)
-            {
-                found = true;
-                break;
-            }
-        }
-    }
-
-    if (!found)
-    {
-        delete[] buf;
-        return;
-    }
-
-    xv2fs->WriteFile("data/ui/iggy/POPUP_PAUSE.iggy", buf, size);
-    delete[] buf;
-}
-
 static void CollectModsCms(const std::vector<std::string> &paths, std::unordered_set<std::string> &cms_set)
 {
     // The purpose of this function is to collect cms of all mods in advance so that the x2m skill assign id cms fake entries know in advance which names not to use.
@@ -4463,7 +4893,7 @@ void MainWindow::RestorePart2(const QString &recover_path)
     X2mFile::SetDummyMode(rp_std, cms_set);
 
     // This order is not arbitrary, and is based on the fact that x2d files have their attachment files dummyed (they get downgraded to "links")
-    // Costumes don't have depends. Skills can have costumes (transformation). Characters can have skills.
+    // Costumes don't have depends. Skills can have costumes (transformation). Super souls can have skills (blast). Characters can have skills and super souls.
     // Replace are their own thing and quests can have any arbitrary attachment
     // Even if the "delayed assigning" of the installer would allow for a rearrange, there are two things to consider:
     // 1) The skill assignment algorithm needs to create fake cms entries once in a while, and these cms id need to be <= 500 for technical reasons,
@@ -4471,8 +4901,9 @@ void MainWindow::RestorePart2(const QString &recover_path)
     // 2) Quests depends are not optional, so everything needs to be installed before quests.
     // TLDR, best order.
     std::vector<std::string> failures;
-    RestoreMods(paths, X2mType::NEW_COSTUME, "costume", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_COSTUME, "costume", success, errors, failures);    
     RestoreMods(paths, X2mType::NEW_SKILL, "skill", success, errors, failures);
+    RestoreMods(paths, X2mType::NEW_SUPERSOUL, "supersoul", success, errors, failures);
     RestoreMods(paths, X2mType::NEW_CHARACTER, "character", success, errors, failures);
     RestoreMods(paths, X2mType::NEW_STAGE, "stage", success, errors, failures);
     RestoreMods(paths, X2mType::REPLACER, "replacer", success, errors, failures);
@@ -4515,8 +4946,6 @@ void MainWindow::RestorePart2(const QString &recover_path)
         UPRINTF("<b>Success!</b><br>");
     else
         DPRINTF("Failure!\n");
-
-    RestoreUiExtensions(rp_std);
 
     UPRINTF("\n");
     UPRINTF("<b>Program will quit once you close this window.</b>");

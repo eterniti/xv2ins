@@ -42,6 +42,7 @@ public:
     QLineEdit *voicesEdit;
     QLabel *label_6;
     QComboBox *dlcComboBox;
+    QCheckBox *cgk2Check;
 
     void setupUi(QDialog *SlotEditDialog)
     {
@@ -96,6 +97,9 @@ public:
         dlcComboBox = new QComboBox(SlotEditDialog);
         dlcComboBox->setObjectName(QStringLiteral("dlcComboBox"));
         dlcComboBox->setGeometry(QRect(95, 250, 113, 22));
+        cgk2Check = new QCheckBox(SlotEditDialog);
+        cgk2Check->setObjectName(QStringLiteral("cgk2Check"));
+        cgk2Check->setGeometry(QRect(120, 190, 91, 17));
 
         retranslateUi(SlotEditDialog);
         QObject::connect(buttonBox, SIGNAL(rejected()), SlotEditDialog, SLOT(reject()));
@@ -138,7 +142,9 @@ public:
          << QApplication::translate("SlotEditDialog", "Dlc_14", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_15", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_16", 0)
+         << QApplication::translate("SlotEditDialog", "Dlc_17", 0)
         );
+        cgk2Check->setText(QApplication::translate("SlotEditDialog", "Flag CGK2", 0));
     } // retranslateUi
 
 };
