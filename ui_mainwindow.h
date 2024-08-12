@@ -42,6 +42,7 @@ public:
     QAction *actionCompile_INTERNAL_folder;
     QAction *actionSlot_editor_stages;
     QAction *actionSlot_editor_stages_local_mode;
+    QAction *actionTriggerPortOover;
     QWidget *centralWidget;
     QHBoxLayout *horizontalLayout;
     QTreeWidget *modsList;
@@ -91,6 +92,8 @@ public:
         actionSlot_editor_stages->setObjectName(QStringLiteral("actionSlot_editor_stages"));
         actionSlot_editor_stages_local_mode = new QAction(MainWindow);
         actionSlot_editor_stages_local_mode->setObjectName(QStringLiteral("actionSlot_editor_stages_local_mode"));
+        actionTriggerPortOover = new QAction(MainWindow);
+        actionTriggerPortOover->setObjectName(QStringLiteral("actionTriggerPortOover"));
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         horizontalLayout = new QHBoxLayout(centralWidget);
@@ -109,7 +112,7 @@ public:
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QStringLiteral("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 995, 21));
+        menuBar->setGeometry(QRect(0, 0, 995, 22));
         menuFile = new QMenu(menuBar);
         menuFile->setObjectName(QStringLiteral("menuFile"));
         menuHelp = new QMenu(menuBar);
@@ -142,6 +145,7 @@ public:
         menuTools->addSeparator();
         menuTools->addAction(actionClear_installation);
         menuTools->addAction(actionRemoveEmptyDirs);
+        menuTools->addAction(actionTriggerPortOover);
         mainToolBar->addAction(actionOpen);
         mainToolBar->addAction(actionUninstall);
 
@@ -167,7 +171,10 @@ public:
         actionCompile_INTERNAL_folder->setText(QApplication::translate("MainWindow", "Compile INTERNAL folder", 0));
         actionSlot_editor_stages->setText(QApplication::translate("MainWindow", "Slot editor (stages)", 0));
         actionSlot_editor_stages_local_mode->setText(QApplication::translate("MainWindow", "Slot editor (stages, local mode)", 0));
+        actionTriggerPortOover->setText(QApplication::translate("MainWindow", "Trigger port over", 0));
         QTreeWidgetItem *___qtreewidgetitem = modsList->headerItem();
+        ___qtreewidgetitem->setText(4, QApplication::translate("MainWindow", "Install Date", 0));
+        ___qtreewidgetitem->setText(3, QApplication::translate("MainWindow", "Type", 0));
         ___qtreewidgetitem->setText(2, QApplication::translate("MainWindow", "Version", 0));
         ___qtreewidgetitem->setText(1, QApplication::translate("MainWindow", "Author", 0));
         ___qtreewidgetitem->setText(0, QApplication::translate("MainWindow", "Name", 0));

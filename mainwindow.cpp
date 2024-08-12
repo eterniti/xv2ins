@@ -31,7 +31,9 @@ enum
 {
     COLUMN_NAME,
     COLUMN_AUTHOR,
-    COLUMN_VERSION
+    COLUMN_VERSION,
+    COLUMN_TYPE,
+    COLUMN_DATE
 };
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -72,8 +74,9 @@ bool MainWindow::Initialize()
     ui->modsList->setSortingEnabled(true);
     ui->modsList->setCurrentItem(nullptr);
 
-    ui->modsList->header()->resizeSection(0, 470);
-    ui->modsList->header()->resizeSection(1, 330);
+    ui->modsList->header()->resizeSection(COLUMN_NAME, 450);
+    ui->modsList->header()->resizeSection(COLUMN_AUTHOR, 250);
+    ui->modsList->header()->resizeSection(COLUMN_VERSION, 45);
     ui->modsList->addAction(ui->actionUninstall);
     ui->actionUninstall->setDisabled(true);
     ui->actionAssociate_x2m_extension->setIcon(this->style()->standardIcon(QStyle::SP_VistaShield));
@@ -389,6 +392,41 @@ void MainWindow::ModToGui(MainWindow::ModEntry &entry)
     item->setText(COLUMN_NAME, entry.name);
     item->setText(COLUMN_AUTHOR, entry.author);
     item->setText(COLUMN_VERSION, QString("%1").arg(entry.version));
+
+    QString type;
+
+    if (entry.type == X2mType::NEW_CHARACTER)
+    {
+        type = "Character";
+    }
+    else if (entry.type == X2mType::NEW_SKILL)
+    {
+        type = "Skill";
+    }
+    else if (entry.type == X2mType::NEW_COSTUME)
+    {
+        type = "Costume";
+    }
+    else if (entry.type == X2mType::NEW_STAGE)
+    {
+        type = "Stage";
+    }
+    else if (entry.type == X2mType::NEW_QUEST)
+    {
+        type = "Quest";
+    }
+    else if (entry.type == X2mType::NEW_SUPERSOUL)
+    {
+        type = "Super Soul";
+    }
+    else
+    {
+        type = "Other";
+    }
+
+    item->setText(COLUMN_TYPE, type);
+    //item->setText(COLUMN_DATE, QDateTime::fromTime_t(entry.last_modified).toString(Qt::TextDate));
+    item->setText(COLUMN_DATE, QDateTime::fromTime_t(entry.last_modified).toString(Qt::ISODate).replace("T", " "));
 }
 
 MainWindow::ModEntry *MainWindow::GetSelectedMod()
@@ -679,6 +717,9 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
             mod.entry_name = Utils::StdStringToQString(x2m.GetEntryName());
             mod.type = x2m.GetType();
 
+            if (!Utils::GetFileDate(path, &mod.last_modified))
+                mod.last_modified = 0;
+
             if (x2m.GetType() == X2mType::NEW_CHARACTER && (x2m.HasCharaSkillDepends() || x2m.HasCharaSsDepends()))
             {
                 if (x2m.HasCharaSkillDepends())
@@ -832,11 +873,21 @@ bool MainWindow::CanUpdateSlots(const X2mFile &new_mod, const X2mFile &old_mod) 
     if (old_mod.GetNumSlotEntries() != num_slots)
         return false;
 
+    if (new_mod.IsInvisible() != old_mod.IsInvisible())
+        return false;
+
     std::vector<CharaListSlotEntry *> charalist_entries;
     chara_list->FindSlotsByCode(std::string("\"") + entry_name + std::string("\""), charalist_entries);
 
-    if (charalist_entries.size() != num_slots)
+    if (!new_mod.IsInvisible())
+    {
+        if (charalist_entries.size() != num_slots)
+            return false;
+    }
+    /*else if (charalist_entries.size() > 0) // This should only happen if user manually attached a slot to an "invisible" mod
+    {
         return false;
+    }*/
 
     CmsEntryXV2 *cms_entry = dynamic_cast<CmsEntryXV2 *>(game_cms->FindEntryByName(entry_name));
     if (!cms_entry)
@@ -1099,7 +1150,7 @@ void MainWindow::PostProcessSkill(X2mFile *x2m)
         }
     }
 
-    if (commit && !Xenoverse2::CommitSystemFiles(false))
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessSkill.\n");
     }
@@ -1155,7 +1206,7 @@ void MainWindow::PostProcessCostume(X2mFile *x2m)
         }
     }
 
-    if (commit && !Xenoverse2::CommitSystemFiles(false))
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessCostume.\n");
     }
@@ -1218,7 +1269,7 @@ void MainWindow::PostProcessSuperSoul(X2mFile *x2m)
         }
     }
 
-    if (commit && !Xenoverse2::CommitSystemFiles(false))
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessSkill.\n");
     }
@@ -1795,27 +1846,38 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
             int num_slots = (int) x2m.GetNumSlotEntries();
 
-            if (num_slots == 1)
+            if (!x2m.IsInvisible())
             {
-                message += "Where do you want to install the mod?\n";
-                box.setText(message);
+                if (num_slots == 1)
+                {
+                    message += "Where do you want to install the mod?\n";
+                    box.setText(message);
 
-                new_slot = box.addButton("Install to new slot", QMessageBox::YesRole);
-                existing_slot = box.addButton("Append to existing slot", QMessageBox::YesRole);
+                    new_slot = box.addButton("Install to new slot", QMessageBox::YesRole);
+                    existing_slot = box.addButton("Append to existing slot", QMessageBox::YesRole);
 
-                box.setDefaultButton(new_slot);
-                box.addButton(QMessageBox::Cancel);
+                    box.setDefaultButton(new_slot);
+                    box.addButton(QMessageBox::Cancel);
+                }
+                else
+                {
+                    message += "This mod has multiple slots/costumes. Where do you want to install them?\n";
+                    box.setText(message);
+
+                    new_slot = box.addButton("Install all of them in a new slot", QMessageBox::YesRole);
+                    existing_slot = box.addButton("Append all of them to an existing slot", QMessageBox::YesRole);
+                    existing_slot_each = box.addButton("Select existing slot for every costume/slot", QMessageBox::YesRole);
+
+                    box.setDefaultButton(new_slot);
+                    box.addButton(QMessageBox::Cancel);
+                }
             }
             else
             {
-                message += "This mod has multiple slots/costumes. Where do you want to install them?\n";
+                message += "Do you want to install this mod?\n";
                 box.setText(message);
 
-                new_slot = box.addButton("Install all of them in a new slot", QMessageBox::YesRole);
-                existing_slot = box.addButton("Append all of them to an existing slot", QMessageBox::YesRole);
-                existing_slot_each = box.addButton("Select existing slot for every costume/slot", QMessageBox::YesRole);
-
-                box.setDefaultButton(new_slot);
+                new_slot = box.addButton(QMessageBox::Ok); // Not really new slot, though...
                 box.addButton(QMessageBox::Cancel);
             }
 
@@ -1842,7 +1904,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
                 if (clicked == new_slot)
                 {
-                    if (chara_list->GetNumSlots() >= XV2_MAX_SLOTS)
+                    if (!x2m.IsInvisible() && chara_list->GetNumSlots() >= XV2_MAX_SLOTS)
                     {
                         DPRINTF("Number of max slots is already at max.\n");
                         ClearAttachments(attachments);
@@ -2113,7 +2175,6 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         }
 
         //UPRINTF("Calling InstallCostumeName");
-
         if (!x2m.InstallCostumeNames())
         {
             DPRINTF("InstallCostumeNames failed.\n");
@@ -2262,6 +2323,22 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
         if (!x2m.InstallCharVfx())
         {
             DPRINTF("InstallCharVfx failed.\n");
+            goto out;
+        }
+
+        // DPRINTF("Calling InstallIkd");
+
+        if (!x2m.InstallIkd())
+        {
+            DPRINTF("InstallIkd failed.\n");
+            goto out;
+        }
+
+        // DPRINTF("Calling InstallVlc");
+
+        if (!x2m.InstallVlc())
+        {
+            DPRINTF("InstallVlc failed.\n");
             goto out;
         }
 
@@ -2710,7 +2787,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
         //UPRINTF("Calling CommitSystemFiles");
 
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, true, true))
         {
             DPRINTF("CommitSystemFiles failed.\n");
             goto out;
@@ -2826,7 +2903,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
         phase = PHASE_COMMIT_SYSTEM_FILES;
 
-        if (!Xenoverse2::CommitSystemFiles(true))
+        if (!Xenoverse2::CommitSystemFiles(true, false, false))
         {
             DPRINTF("CommitSystemFiles failed.\n");
             goto out;
@@ -2927,7 +3004,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
         phase = PHASE_COMMIT_SYSTEM_FILES;
 
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, false, false))
         {
             DPRINTF("CommitSystemFiles failed.\n");
             goto out;
@@ -3167,9 +3244,9 @@ out:
             {
                 if (x2m.UninstallCms() && x2m.UninstallCus() && x2m.UninstallCso() &&  x2m.UninstallPsc() &&
                     x2m.UninstallAur() && x2m.UninstallSevAudio() && x2m.UninstallSev(sev_hl_table, sev_ll_table) &&
-                    x2m.UninstallCml() && x2m.UninstallHci())
+                    x2m.UninstallCml() && x2m.UninstallHci() && x2m.UninstallIkd() && x2m.UninstallVlc())
                 {
-                    if (!Xenoverse2::CommitSystemFiles(false))
+                    if (!Xenoverse2::CommitSystemFiles(false, true, true))
                         undo_success = false;
                 }
                 else
@@ -3276,7 +3353,7 @@ out:
             {
                 if (x2m.UninstallCusSkill())
                 {
-                    if (!Xenoverse2::CommitSystemFiles(true))
+                    if (!Xenoverse2::CommitSystemFiles(true, false, false))
                         undo_success = false;
                 }
                 else
@@ -3424,7 +3501,7 @@ out:
             {
                 if (x2m.UninstallStageDef())
                 {
-                    if (!Xenoverse2::CommitSystemFiles(false))
+                    if (!Xenoverse2::CommitSystemFiles(false, false, false))
                         undo_success = false;
                 }
                 else
@@ -3581,6 +3658,9 @@ out:
     mod->skill_sets.clear();
     mod->skill_entry.clear();
 
+    if (!Utils::GetFileDate(dummy_path, &mod->last_modified))
+        mod->last_modified = 0;
+
     AddModToQuestCompiler(x2m, qc, dummy_path);
 
     if (x2m.GetType() == X2mType::NEW_SKILL)
@@ -3674,7 +3754,7 @@ void MainWindow::PostProcessCostumeUninstall(X2mFile *x2m, const X2mCostumeEntry
         }
     }
 
-    if (commit && !Xenoverse2::CommitSystemFiles(false))
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
     {
         DPRINTF("CommitSystemFiles failed in PostProcessCostumeUninstall.\n");
     }
@@ -3753,6 +3833,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             DPRINTF("UninstallSlots failed.\n");
             return false;
         }
+
 
         if (!x2d.UninstallCms())
         {
@@ -3841,6 +3922,18 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
         if (!x2d.UninstallCharVfx())
         {
             DPRINTF("UninstallCharVfx failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallIkd())
+        {
+            DPRINTF("UninstallIkd failed.\n");
+            return false;
+        }
+
+        if (!x2d.UninstallVlc())
+        {
+            DPRINTF("UninstallVlc failed.\n");
             return false;
         }
 
@@ -4177,7 +4270,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             return false;
         }
 
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, true, true))
         {
             DPRINTF("CommitSystemFiles failed (in uninstall).\n");
             return false;
@@ -4262,7 +4355,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             return false;
         }
 
-        if (!Xenoverse2::CommitSystemFiles(true))
+        if (!Xenoverse2::CommitSystemFiles(true, false, false))
         {
             DPRINTF("CommitSystemFiles failed (in uninstall).\n");
             return false;
@@ -4321,7 +4414,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
             return false;
         }
 
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, false, false))
         {
             DPRINTF("CommitSystemFiles failed (in uninstall)\n");
             return false;
@@ -4410,7 +4503,7 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
         }
 
         // Psc may change (talisman references removed) so we need this
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, false, false))
         {
             DPRINTF("CommitSystemFiles failed (in uninstall).\n");
             return false;
@@ -5709,7 +5802,7 @@ void MainWindow::on_actionFind_and_delete_dead_ids_triggered()
 
     if (deleted != 0)
     {
-        if (!Xenoverse2::CommitSystemFiles(false))
+        if (!Xenoverse2::CommitSystemFiles(false, true, true))
         {
             DPRINTF("CommitSystemFiles failed.\n");
             return;
@@ -6436,3 +6529,9 @@ void MainWindow::on_actionSlot_editor_stages_local_mode_triggered()
         }
     }
 }
+
+void MainWindow::on_actionTriggerPortOover_triggered()
+{
+    RestorePart1();
+}
+

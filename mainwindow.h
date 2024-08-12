@@ -63,6 +63,8 @@ private slots:
 
     void on_actionSlot_editor_stages_local_mode_triggered();
 
+    void on_actionTriggerPortOover_triggered();
+
 private:
     Ui::MainWindow *ui;
     QLabel *statusLabel;
@@ -85,6 +87,7 @@ private:
         QString guid;
         QString entry_name;
         X2mType type;
+        time_t last_modified;
 
         // /// Depends section
         std::vector<X2mDepends> depends; // For skill or super soul, this vector will either be 0 or 1 sized.
