@@ -43,6 +43,7 @@ public:
     QAction *actionSlot_editor_stages;
     QAction *actionSlot_editor_stages_local_mode;
     QAction *actionTriggerPortOover;
+    QAction *actionSet_dark_theme;
     QWidget *centralWidget;
     QHBoxLayout *horizontalLayout;
     QTreeWidget *modsList;
@@ -50,6 +51,7 @@ public:
     QMenu *menuFile;
     QMenu *menuHelp;
     QMenu *menuTools;
+    QMenu *menuView;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
 
@@ -94,6 +96,8 @@ public:
         actionSlot_editor_stages_local_mode->setObjectName(QStringLiteral("actionSlot_editor_stages_local_mode"));
         actionTriggerPortOover = new QAction(MainWindow);
         actionTriggerPortOover->setObjectName(QStringLiteral("actionTriggerPortOover"));
+        actionSet_dark_theme = new QAction(MainWindow);
+        actionSet_dark_theme->setObjectName(QStringLiteral("actionSet_dark_theme"));
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         horizontalLayout = new QHBoxLayout(centralWidget);
@@ -119,6 +123,8 @@ public:
         menuHelp->setObjectName(QStringLiteral("menuHelp"));
         menuTools = new QMenu(menuBar);
         menuTools->setObjectName(QStringLiteral("menuTools"));
+        menuView = new QMenu(menuBar);
+        menuView->setObjectName(QStringLiteral("menuView"));
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -128,6 +134,7 @@ public:
         MainWindow->setStatusBar(statusBar);
 
         menuBar->addAction(menuFile->menuAction());
+        menuBar->addAction(menuView->menuAction());
         menuBar->addAction(menuTools->menuAction());
         menuBar->addAction(menuHelp->menuAction());
         menuFile->addAction(actionOpen);
@@ -146,6 +153,7 @@ public:
         menuTools->addAction(actionClear_installation);
         menuTools->addAction(actionRemoveEmptyDirs);
         menuTools->addAction(actionTriggerPortOover);
+        menuView->addAction(actionSet_dark_theme);
         mainToolBar->addAction(actionOpen);
         mainToolBar->addAction(actionUninstall);
 
@@ -172,6 +180,10 @@ public:
         actionSlot_editor_stages->setText(QApplication::translate("MainWindow", "Slot editor (stages)", 0));
         actionSlot_editor_stages_local_mode->setText(QApplication::translate("MainWindow", "Slot editor (stages, local mode)", 0));
         actionTriggerPortOover->setText(QApplication::translate("MainWindow", "Trigger port over", 0));
+        actionSet_dark_theme->setText(QApplication::translate("MainWindow", "Toggle dark theme", 0));
+#ifndef QT_NO_TOOLTIP
+        actionSet_dark_theme->setToolTip(QApplication::translate("MainWindow", "Toggle dark theme", 0));
+#endif // QT_NO_TOOLTIP
         QTreeWidgetItem *___qtreewidgetitem = modsList->headerItem();
         ___qtreewidgetitem->setText(4, QApplication::translate("MainWindow", "Install Date", 0));
         ___qtreewidgetitem->setText(3, QApplication::translate("MainWindow", "Type", 0));
@@ -181,6 +193,7 @@ public:
         menuFile->setTitle(QApplication::translate("MainWindow", "File", 0));
         menuHelp->setTitle(QApplication::translate("MainWindow", "Help", 0));
         menuTools->setTitle(QApplication::translate("MainWindow", "Tools", 0));
+        menuView->setTitle(QApplication::translate("MainWindow", "View", 0));
     } // retranslateUi
 
 };

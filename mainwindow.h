@@ -65,6 +65,8 @@ private slots:
 
     void on_actionTriggerPortOover_triggered();
 
+    void on_actionSet_dark_theme_triggered();
+
 private:
     Ui::MainWindow *ui;
     QLabel *statusLabel;
@@ -112,6 +114,8 @@ private:
     size_t temp_empty_deleted; // For delete empty dir
     bool temp_empty_yesall; // For delete empty dir
 
+    std::string GetInstalledModsPath();
+
     bool ProcessShutdown();
     void UpdateStatus();
 
@@ -125,7 +129,7 @@ private:
     static void AddModToQuestCompiler(X2mFile &x2m, Xv2QuestCompiler &qc, const std::string &path);
     static bool LoadVisitor(const std::string &path, bool, void *param);
     uint8_t *GetAudio(AcbFile *acb, AwbFile *awb, uint32_t cue_id, size_t *psize);   
-    void LoadInstalledMods();    
+    void LoadInstalledMods(const QString &restore_path="");
 
     bool ExtractQuestFiles(X2mFile &x2m, std::string &qs, std::string &cs, std::string &ds, std::string &ps, std::vector<std::string> &svec, std::vector<std::string> &sfvec);
 
@@ -152,6 +156,7 @@ private:
     bool ConvertModEntry(X2mFile *x2m, const std::string &new_entry);
 
     void RestartProgram(const QStringList &args = {});
+    void ToggleDarkTheme(bool update_config);
 };
 
 #endif // MAINWINDOW_H

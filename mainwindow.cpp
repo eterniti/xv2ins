@@ -6,6 +6,7 @@
 #include <QCheckBox>
 #include <QTime>
 #include <QProcess>
+#include <QStyleFactory>
 
 #include <map>
 
@@ -26,6 +27,8 @@
 #define CHASEL_PATH "Internal/CharaSele"
 
 #define XV2INSTALLER_INSTANCE "XV2INSTALLER_INSTANCE"
+
+//#define DEBUG_MEASURE_TIME
 
 enum
 {
@@ -106,6 +109,9 @@ bool MainWindow::Initialize()
     bool success = Bootstrap(false, true, &needs_update);
     XV2Patcher::Init();
 
+    if (config.dark_theme)
+        ToggleDarkTheme(false);
+
     if (!success && !needs_update)
     {
         return false;
@@ -161,7 +167,7 @@ bool MainWindow::Initialize()
     {
         clean_install = true;
     }
-    else if (!game_cms->FindEntryByName("SVE") || !game_cms->FindEntryByName("EIB"))
+    else if (!game_cms->FindEntryByName("NTG") || !game_cms->FindEntryByName("NTJ"))
     {
         clean_install = true;
     }
@@ -195,10 +201,9 @@ bool MainWindow::Initialize()
     }
 
     CheckRegistryAssociation();
-    LoadInstalledMods();
 
     if (qApp->arguments().size() >= 2)
-    {       
+    {
         if (qApp->arguments()[1] == "--restore")
         {
             if (qApp->arguments().size() == 2)
@@ -208,10 +213,16 @@ bool MainWindow::Initialize()
             }
 
             invisible_mode = true;
+            LoadInstalledMods(qApp->arguments()[2]);
             RestorePart2(qApp->arguments()[2]);
             return false;
         }
+    }
 
+    LoadInstalledMods();
+
+    if (qApp->arguments().size() >= 2)
+    {       
         bool silent = false;
         bool multiple = false;
         int total = qApp->arguments().size()-1;
@@ -268,6 +279,17 @@ bool MainWindow::Initialize()
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+std::string MainWindow::GetInstalledModsPath()
+{
+    static std::string pre_computed;
+
+    if (pre_computed.length() != 0)
+        return pre_computed;
+
+    pre_computed = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), INSTALLED_MODS_PATH_NEW);
+    return pre_computed;
 }
 
 bool MainWindow::ProcessShutdown()
@@ -778,11 +800,35 @@ uint8_t *MainWindow::GetAudio(AcbFile *acb, AwbFile *awb, uint32_t cue_id, size_
     return hca_buf;
 }
 
-void MainWindow::LoadInstalledMods()
+void MainWindow::LoadInstalledMods(const QString &restore_path)
 {
     process_selection_change = false;
     installed_mods.clear();
-    Utils::VisitDirectory(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, LoadVisitor, this);    
+
+    std::string installed_path = GetInstalledModsPath();
+
+    if (!Utils::DirExists(installed_path))
+    {
+        Utils::WriteTextFile(Utils::MakePathString(installed_path, "readme.txt"),
+                             "This folder contains install data for XV2 Mods Installer.\nPlease don't delete.",
+                             true, true);
+
+        std::string legacy_path = Utils::GetAppDataPath(INSTALLED_MODS_PATH_LEGACY);
+        if (Utils::DirExists(legacy_path))
+        {
+            Utils::MoveFileOrDir(legacy_path, installed_path);
+        }
+    }
+
+    if (restore_path.length() > 0)
+    {
+        std::string old_mods_path = Utils::MakePathString(Utils::QStringToStdString(restore_path), INSTALLED_MODS_DIR_NAME);
+
+        if (Utils::DirExists(old_mods_path))
+            Utils::CopyDir(old_mods_path, installed_path, true);
+    }
+
+    Utils::VisitDirectory(installed_path, true, false, false, LoadVisitor, this);
 
     UpdateStatus();
     process_selection_change = true;
@@ -1277,12 +1323,21 @@ void MainWindow::PostProcessSuperSoul(X2mFile *x2m)
 
 static bool VerifyCostumeMsg()
 {
-    size_t num_names = game_cac_costume_names[0]->GetNumEntries();
-    size_t num_descs = game_cac_costume_descs[0]->GetNumEntries();
-    size_t num_names_acc = game_accesory_names[0]->GetNumEntries();
-    size_t num_descs_acc = game_accesory_descs[0]->GetNumEntries();
+    int lang = (global_lang >= 0) ? global_lang : XV2_LANG_ENGLISH;
 
-    for (int i = 0; i < XV2_LANG_NUM; i++)
+    size_t num_names = game_cac_costume_names[lang]->GetNumEntries();
+    size_t num_descs = game_cac_costume_descs[lang]->GetNumEntries();
+    size_t num_names_acc = game_accesory_names[lang]->GetNumEntries();
+    size_t num_descs_acc = game_accesory_descs[lang]->GetNumEntries();
+
+    int ls = 0, le = XV2_LANG_NUM;
+    if (global_lang >= 0)
+    {
+        ls = global_lang;
+        le = global_lang+1;
+    }
+
+    for (int i = ls; i < le; i++)
     {
         if (game_cac_costume_names[i]->GetNumEntries() != num_names)
         {
@@ -3603,7 +3658,7 @@ out:
         return nullptr;
     } // if error
 
-    const std::string dummy_path = Utils::GetAppDataPath(INSTALLED_MODS_PATH) + "/" + x2m.GetModGuid() + ".x2d";
+    const std::string dummy_path = GetInstalledModsPath() + "/" + x2m.GetModGuid() + ".x2d";
 
     if (!restore_mode)
     {
@@ -4537,6 +4592,51 @@ void MainWindow::RestartProgram(const QStringList &args)
     qApp->exit();
 }
 
+void MainWindow::ToggleDarkTheme(bool update_config)
+{
+    if (update_config)
+    {
+        config.dark_theme = !config.dark_theme;
+        config.Save();
+    }
+
+    static bool dark_theme = false;
+    static QPalette saved_palette;
+
+    if (!dark_theme)
+    {
+        saved_palette = qApp->palette();
+        //DPRINTF("%s\n", qApp->style()->metaObject()->className());
+
+        qApp->setStyle(QStyleFactory::create("Fusion"));
+        QPalette palette;
+        palette.setColor(QPalette::Window, QColor(53,53,53));
+        palette.setColor(QPalette::WindowText, Qt::white);
+        palette.setColor(QPalette::Base, QColor(15,15,15));
+        palette.setColor(QPalette::AlternateBase, QColor(53,53,53));
+        palette.setColor(QPalette::ToolTipBase, Qt::white);
+        palette.setColor(QPalette::ToolTipText, Qt::white);
+        palette.setColor(QPalette::Text, Qt::white);
+        palette.setColor(QPalette::Button, QColor(53,53,53));
+        palette.setColor(QPalette::ButtonText, Qt::white);
+        palette.setColor(QPalette::BrightText, Qt::red);
+
+        //palette.setColor(QPalette::Highlight, QColor(142,45,197).lighter());
+        palette.setColor(QPalette::HighlightedText, Qt::black);
+        palette.setColor(QPalette::Disabled, QPalette::Text, Qt::darkGray);
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+        qApp->setPalette(palette);
+
+        dark_theme =true;
+    }
+    else
+    {
+        qApp->setStyle(QStyleFactory::create("windowsvista"));
+        qApp->setPalette(saved_palette);
+        dark_theme = false;
+    }
+}
+
 bool MainWindow::ClearInstallation(bool special_mode)
 {
     const std::string data_dir = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), "data");
@@ -4611,7 +4711,7 @@ void MainWindow::RestorePart1()
     text += "The process will consist in the following:<br><br>";
     text += "\t-Firstly, the data folder will be renamed to " + Utils::StdStringToQString(Utils::GetFileNameString(data_dir_old), true) + "<br><br>";
     text += "\t-Then the program will self-restart, creating a basic new data folder (clean).<br><br>";
-    text += "\t-The program will try to restore all x2m mods by using a combination of the semi-dummy x2d files in Roaming/XV2INS/Installed and the old data folder.<br><br>";
+    text += "\t-The program will try to restore all x2m mods by using a combination of the semi-dummy x2d files in InstalledMods and the old data folder.<br><br>";
     text += "\t-After that, it will port old slots (characters and stages) to new installation.<br><br>";
     text += "\t-Finally, the program will ask you if you want to delete, keep or send to recycle bin the old data folder.<br><br>";
     text += "<b>Known limitations:</b><br><br>";
@@ -4645,6 +4745,10 @@ void MainWindow::RestorePart1()
     RestartProgram( { "--restore", Utils::StdStringToQString(data_dir_old, true) });
 }
 
+#ifdef DEBUG_MEASURE_TIME
+static std::map<uint32_t, std::string> itime_map;
+#endif
+
 void MainWindow::RestoreMods(const std::vector<std::string> &paths, X2mType type, const std::string &label, int &global_success, int &global_errors, std::vector<std::string> &failures)
 {
     int success = 0;
@@ -4664,8 +4768,26 @@ void MainWindow::RestoreMods(const std::vector<std::string> &paths, X2mType type
         UPRINTF("Attempting to restore mod \"%s\" from file \"%s\"...", x2d.GetModName().c_str(), Utils::GetFileNameString(file).c_str());
         QApplication::processEvents();
 
+#ifdef DEBUG_MEASURE_TIME
+        uint64_t start_time = GetTickCount64();
+#endif
+
         if (InstallMod(Utils::StdStringToQString(file, true), nullptr, true, true))
         {
+#ifdef DEBUG_MEASURE_TIME
+            uint32_t itime = (uint32_t)(GetTickCount64()- start_time);
+            UPRINTF("Mod installed in %d milisecs", itime);
+
+            auto it = itime_map.find(itime);
+            if (it == itime_map.end())
+            {
+                itime_map[itime] = x2d.GetModName();
+            }
+            else
+            {
+                itime_map[itime] = itime_map[itime] + ";;;" + x2d.GetModName();
+            }
+#endif
             UPRINTF("<b>Success!</b><br>");
             success++;
         }
@@ -4977,7 +5099,7 @@ void MainWindow::RestorePart2(const QString &recover_path)
     std::vector<std::string> paths;
     std::unordered_set<std::string> cms_set;
 
-    Utils::ListFiles(Utils::GetAppDataPath(INSTALLED_MODS_PATH), true, false, false, paths);
+    Utils::ListFiles(GetInstalledModsPath(), true, false, false, paths);
     CollectModsCms(paths, cms_set);
 
     int success = 0;
@@ -5042,6 +5164,14 @@ void MainWindow::RestorePart2(const QString &recover_path)
 
     UPRINTF("\n");
     UPRINTF("<b>Program will quit once you close this window.</b>");
+
+#ifdef DEBUG_MEASURE_TIME
+    UPRINTF("********Priting install times ordered from lower to bigger.");
+    for (const auto &it: itime_map)
+    {
+        UPRINTF("%d - %s", it.first, it.second.c_str());
+    }
+#endif
 
     redirect_uprintf((RedirectFunc)nullptr);
     redirect_dprintf((RedirectFunc)nullptr);
@@ -5188,6 +5318,7 @@ void MainWindow::on_actionExit_triggered()
 
 void MainWindow::on_actionAbout_triggered()
 {    
+    DPRINTF("%d\n", Utils::IsUtf8());
     /*size_t size;
     uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.21.1_dirty.exe", &size);
 
@@ -6533,5 +6664,10 @@ void MainWindow::on_actionSlot_editor_stages_local_mode_triggered()
 void MainWindow::on_actionTriggerPortOover_triggered()
 {
     RestorePart1();
+}
+
+void MainWindow::on_actionSet_dark_theme_triggered()
+{
+    ToggleDarkTheme(true);
 }
 
