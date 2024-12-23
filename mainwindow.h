@@ -22,6 +22,7 @@ public:
     ~MainWindow();
 
     bool Initialize();
+    void ClearEpatches();
     bool ClearInstallation(bool special_mode);
     void RestorePart1();    
     void RestoreMods(const std::vector<std::string> &paths, X2mType type, const std::string &label, int &global_success, int &global_errors, std::vector<std::string> &failures);
@@ -79,6 +80,7 @@ private:
 
     std::vector<TtbTableEntryHL> ttb_hl_table;
     std::vector<TtbTableEntryLL> ttb_ll_table;
+    std::unordered_map<std::string, uint32_t> character_mod_map; // GUID 2 cms map
 
     struct ModEntry
     {
@@ -100,7 +102,7 @@ private:
         std::vector<PscSpecEntry> psc_entries;  // Only for chara mods with supersoul depends
 
         // This one needed along depends to update costume of skills "after"
-        std::vector<std::pair<CusSkill, X2mSkillType>> skill_entry; // Only for skill mods with costume depends. This should be a 0 or 1 sized vector.
+        std::vector<std::pair<CusSkill, X2mSkillType>> skill_entry; // Only for skill mods with costume or character depends. This should be a 0 or 1 sized vector.
         // ///
 
         int index;
@@ -142,11 +144,13 @@ private:
     void PostProcessSkill(X2mFile *x2m);
     void PostProcessCostume(X2mFile *x2m);
     void PostProcessSuperSoul(X2mFile *x2m);
+    void PostProcessCharacter(X2mFile *x2m);
     ModEntry *InstallMod(const QString &path, ModEntry *reinstall_mod, bool silent_mode, bool restore_mode=false);
 
     void RemoveDeadItem();
     void PostProcessCostumeUninstall(X2mFile *x2m, const X2mCostumeEntry &costume);
     void PostProcessSkillUninstall(X2mFile *x2m);
+    void PostProcessCharacterUninstall(X2mFile *x2m);
     bool UninstallMod(const ModEntry &mod, bool remove_empty_dir, bool restore_mode=false);
 
     bool MultipleModsQuestion();

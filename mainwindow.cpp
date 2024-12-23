@@ -590,64 +590,14 @@ void MainWindow::AddModToQuestCompiler(X2mFile &x2m, Xv2QuestCompiler &qc, const
     }
     else if (mod.type == X2mType::NEW_SUPERSOUL)
     {
-        // TODO
-        return;
+        X2mSuperSoul *ss = game_costume_file->FindSuperSoul(x2m.GetModGuid());
+        if (!ss)
+            return;
+
+        mod.ss = *ss;
     }
 
     qc.PushMod(Utils::ToLowerCase(x2m.GetModGuid()), mod);
-}
-
-// Temporal fix by mess created by version 3.8
-//  To be deleted in the future
-static int num_skill_mods_fixed_381 = 0;
-static int num_costume_mods_fixed_381 = 0;
-
-void FixMod381(X2mFile &x2m)
-{
-    if (x2m.GetType() == X2mType::NEW_SKILL && x2m.HasSkillIdbEntry() && x2m.FindInstalledSkill())
-    {
-        if (x2m.InstallCusSkill())
-        {
-            if (x2m.InstallIdbSkill())
-            {
-                num_skill_mods_fixed_381++;
-            }
-            else
-            {
-                //DPRINTF("InstallIdbSkill failed on %s\n", x2m.GetModName().c_str());
-            }
-        }
-        else
-        {
-            //DPRINTF("InstallCusSkill failed on %s\n", x2m.GetModName().c_str());
-        }
-
-    }
-    else if (x2m.GetType() == X2mType::NEW_COSTUME && x2m.FindInstalledCostume())
-    {
-        if (x2m.InstallCostumePartSets())
-        {
-            if (x2m.InstallCostumeCostumeNames() && x2m.InstallCostumeAccessoryNames() && x2m.InstallCostumeCostumeDescs() && x2m.InstallCostumeAccessoryDescs())
-            {
-                if (x2m.InstallCostumeIdb())
-                {
-                    num_costume_mods_fixed_381++;
-                }
-                else
-                {
-                    //DPRINTF("InstallCostumeIdb failed on %s\n", x2m.GetModName().c_str());
-                }
-            }
-            else
-            {
-                //DPRINTF("InstallCostume*Names or *Descs failed on %s\n", x2m.GetModName().c_str());
-            }
-        }
-        else
-        {
-            //DPRINTF("InstallCostumePartSets failed on %s\n", x2m.GetModName().c_str());
-        }
-    }
 }
 
 bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
@@ -660,18 +610,7 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
         X2mFile x2m;       
 
         if (x2m.LoadFromFile(path))
-        { 
-            if (!config.idb_fix_applied)
-            {
-                std::string ver = PROGRAM_VERSION;
-                if (ver == "3.81" && x2m.GetFormatVersion() < (x2m.X2M_MIN_VERSION_NEW_IDB_FORMAT-0.00001))
-                {
-                    FixMod381(x2m);
-                }
-            }
-
-            // end of fix
-
+        {
             if (x2m.HasSevHL())
             {
                 for (size_t i = 0; i < x2m.GetNumSevHLEntries(); i++)
@@ -742,27 +681,44 @@ bool MainWindow::LoadVisitor(const std::string &path, bool, void *param)
             if (!Utils::GetFileDate(path, &mod.last_modified))
                 mod.last_modified = 0;
 
-            if (x2m.GetType() == X2mType::NEW_CHARACTER && (x2m.HasCharaSkillDepends() || x2m.HasCharaSsDepends()))
+            if (x2m.GetType() == X2mType::NEW_CHARACTER)
             {
-                if (x2m.HasCharaSkillDepends())
+                if (x2m.HasCharaSkillDepends() || x2m.HasCharaSsDepends())
                 {
-                    mod.depends = x2m.GetAllCharaSkillDepends();
-                    mod.skill_sets = x2m.GetAllSkillSets();
+                    if (x2m.HasCharaSkillDepends())
+                    {
+                        mod.depends = x2m.GetAllCharaSkillDepends();
+                        mod.skill_sets = x2m.GetAllSkillSets();
+                    }
+
+                    if (x2m.HasCharaSsDepends())
+                    {
+                        std::vector<X2mDepends> &ss_dep = x2m.GetAllCharaSsDepends();
+                        mod.depends.insert(mod.depends.end(), ss_dep.begin(), ss_dep.end());
+                        mod.psc_entries = x2m.GetAllPscEntries();
+                    }
                 }
 
-                if (x2m.HasCharaSsDepends())
+                CmsEntry *cms_entry = game_cms->FindEntryByName(x2m.GetEntryName());
+                if (cms_entry)
                 {
-                    std::vector<X2mDepends> &ss_dep = x2m.GetAllCharaSsDepends();
-                    mod.depends.insert(mod.depends.end(), ss_dep.begin(), ss_dep.end());
-                    mod.psc_entries = x2m.GetAllPscEntries();
+                    pthis->character_mod_map[x2m.GetModGuid()] = cms_entry->id;
                 }
             }
-            else if (x2m.GetType() == X2mType::NEW_SKILL && x2m.HasSkillCostumeDepend())
+            else if (x2m.GetType() == X2mType::NEW_SKILL)
             {
-                mod.depends.clear();
-                mod.depends.push_back(x2m.GetSkillCostumeDepend());
-                mod.skill_entry.clear();
-                mod.skill_entry.push_back(std::pair<CusSkill, X2mSkillType>(x2m.GetSkillEntry(), x2m.GetSkillType()));
+                if (x2m.HasSkillCostumeDepend())
+                {
+                    mod.depends.push_back(x2m.GetSkillCostumeDepend());
+                    mod.skill_entry.push_back(std::pair<CusSkill, X2mSkillType>(x2m.GetSkillEntry(), x2m.GetSkillType()));
+                }
+
+                if (x2m.HasSkillCharaDepend())
+                {
+                    mod.depends.push_back(x2m.GetSkillCharaDepend());
+                    if (mod.skill_entry.size() == 0)
+                        mod.skill_entry.push_back(std::pair<CusSkill, X2mSkillType>(x2m.GetSkillEntry(), x2m.GetSkillType()));
+                }
             }
             else if (x2m.GetType() == X2mType::NEW_SUPERSOUL && x2m.HasSSSkillDepend())
             {
@@ -1321,6 +1277,59 @@ void MainWindow::PostProcessSuperSoul(X2mFile *x2m)
     }
 }
 
+void MainWindow::PostProcessCharacter(X2mFile *x2m)
+{
+    CmsEntry *cms_entry = game_cms->FindEntryByName(x2m->GetEntryName());
+    if (!cms_entry) // Should never happen because we just installed this mod, but you never know...
+        return;
+
+    character_mod_map[x2m->GetModGuid()] = cms_entry->id;
+
+    // Code from here is to install this character in the cus of skills that linked it, in the case the character was installed later
+    bool commit = false;
+
+    uint8_t char_guid[16];
+    Utils::String2GUID(char_guid, x2m->GetModGuid());
+
+    for (const ModEntry &mod : installed_mods)
+    {
+        if (mod.depends.size() > 0 && mod.type == X2mType::NEW_SKILL)
+        {
+            uint16_t id = 0xFFFF;
+
+            for (const X2mDepends &dep : mod.depends)
+            {
+                if (dep.type == X2mDependsType::CHARACTER && memcmp(dep.guid, char_guid, 16) == 0)
+                {
+                    id = (uint16_t)dep.id;
+                    break;
+                }
+            }
+
+            if (id == 0xFFFF || mod.skill_entry.size() == 0)
+                continue;
+
+            uint8_t skill_guid[16];
+            Utils::String2GUID(skill_guid, Utils::QStringToStdString(mod.guid));
+
+            CusSkill *skill = X2mFile::FindInstalledSkill(skill_guid,  mod.skill_entry.front().second);
+            if (!skill)
+                continue;
+
+            if (skill->model == 0xFFFF)
+            {
+                skill->model = (uint16_t)cms_entry->id;
+                commit = true;
+            }
+        }
+    }
+
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
+    {
+        DPRINTF("CommitSystemFiles failed in PostProcessCharacter.\n");
+    }
+}
+
 static bool VerifyCostumeMsg()
 {
     int lang = (global_lang >= 0) ? global_lang : XV2_LANG_ENGLISH;
@@ -1384,6 +1393,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
     X2mFile *x2d = nullptr;
     bool update = false;
     QWidget *parent = (invisible_mode) ? this : nullptr;
+    uint32_t depends_cms = 0xFFFFFFFF; // For skills with a character link/embed
 
     const std::string path_std = Utils::QStringToStdString(path);
 
@@ -1570,13 +1580,45 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
                     }
                 }
             }
+        }
 
-            if (attachments.size() != 0 && !reinstall_mod)
+        if (x2m.HasSkillCharaDepend())
+        {
+            if (temp_skill_entry.size() == 0)
+                temp_skill_entry.push_back(x2m.GetSkillEntry());
+
+            if (x2m.SkillCharaDependHasAttachment())
             {
-                X2mFile *costume_x2m = attachments.front();
+                X2mFile *char_x2m = x2m.LoadSkillCharaDependAttachment();
+                if (char_x2m)
+                {
+                    ModEntry *char_mod = FindModByGuid(Utils::StdStringToQString(char_x2m->GetModGuid()));
+                    if (char_mod)
+                    {
+                        if (char_mod->version >= char_x2m->GetModVersion())
+                        {
+                            delete char_x2m;
+                        }
+                        else
+                        {
+                            attachments.push_back(char_x2m);
+                        }
+                    }
+                    else
+                    {
+                        attachments.push_back(char_x2m);
+                    }
+                }
+            }
+        }
 
-                depends_message = "The following mod will also be installed/updated:\n";
-                depends_message += "- " + Utils::StdStringToQString(costume_x2m->GetModName(), false) + " (by " + Utils::StdStringToQString(costume_x2m->GetModAuthor(), false) + ")\n";
+        if (attachments.size() != 0 && !reinstall_mod)
+        {
+            depends_message = (attachments.size() == 1) ? "The following mod will also be installed/updated:\n" : "The following mods will also be installed/updated:\n";
+
+            for (X2mFile *att : attachments)
+            {
+                depends_message += "- " + Utils::StdStringToQString(att->GetModName(), false) + " (by " + Utils::StdStringToQString(att->GetModAuthor(), false) + ")\n";
             }
         }
     }
@@ -2152,6 +2194,13 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
     ClearAttachments(attachments);
 
+    if (x2m.GetType() == X2mType::NEW_SKILL && x2m.HasSkillCharaDepend())
+    {
+        auto it = character_mod_map.find(Utils::GUID2String(x2m.GetSkillCharaDepend().guid));
+        if (it != character_mod_map.end())
+            depends_cms = it->second;
+    }
+
     //UPRINTF("Calling CreateDummyPackage");
 
     x2d = x2m.CreateDummyPackage();
@@ -2472,7 +2521,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
             goto out;
         }
 
-        if (!x2m.InstallCusSkill())
+        if (!x2m.InstallCusSkill(depends_cms))
         {
             DPRINTF("InstallCusSkill failed.\n");
             goto out;
@@ -3742,6 +3791,8 @@ out:
             mod->depends.insert(mod->depends.end(), ss_depends.begin(), ss_depends.end());
             mod->psc_entries = temp_psc_entries;
         }
+
+        PostProcessCharacter(&x2m); // Add character to map, and process skill->character links
     }
     else if (x2m.GetType() == X2mType::NEW_COSTUME)
     {
@@ -3855,6 +3906,60 @@ void MainWindow::PostProcessSkillUninstall(X2mFile *x2m)
     if (commit && !Xenoverse2::CommitIdb(false, false, true, false))
     {
         DPRINTF("CommitIdb failed in PostProcessSkillUninstall.\n");
+    }
+}
+
+void MainWindow::PostProcessCharacterUninstall(X2mFile *x2m)
+{
+    uint16_t model = 0;
+    auto it = character_mod_map.find(x2m->GetModGuid());
+    if (it == character_mod_map.end())
+        return;
+
+    model = (uint16_t)it->second;
+    character_mod_map.erase(it);
+
+    bool commit = false;
+
+    uint8_t char_guid[16];
+    Utils::String2GUID(char_guid, x2m->GetModGuid());
+
+    for (const ModEntry &mod : installed_mods)
+    {
+        if (mod.depends.size() > 0 && mod.type == X2mType::NEW_SKILL)
+        {
+            uint16_t id = 0xFFFF;
+
+            for (const X2mDepends &dep : mod.depends)
+            {
+                if (dep.type == X2mDependsType::CHARACTER && memcmp(dep.guid, char_guid, 16) == 0)
+                {
+                    id = (uint16_t)dep.id;
+                    break;
+                }
+            }
+
+            if (id == 0xFFFF || mod.skill_entry.size() == 0)
+                continue;
+
+            uint8_t skill_guid[16];
+            Utils::String2GUID(skill_guid, Utils::QStringToStdString(mod.guid));
+
+            CusSkill *skill = X2mFile::FindInstalledSkill(skill_guid,  mod.skill_entry.front().second);
+            if (!skill)
+                continue;
+
+            if (skill->model == model)
+            {
+                skill->model = 0xFFFF;
+                commit = true;
+            }
+        }
+    }
+
+    if (commit && !Xenoverse2::CommitSystemFiles(false, false, false))
+    {
+        DPRINTF("CommitSystemFiles failed in PostProcessCharacterUninstall.\n");
     }
 }
 
@@ -4573,6 +4678,10 @@ bool MainWindow::UninstallMod(const MainWindow::ModEntry &mod, bool remove_empty
     {
         PostProcessCostumeUninstall(&x2d, uninstall_cost_entry);
     }
+    else if (x2d.GetType() == X2mType::NEW_CHARACTER)
+    {
+        PostProcessCharacterUninstall(&x2d);
+    }
 
     qc.RemoveMod(Utils::ToLowerCase(x2d.GetModGuid()));
 
@@ -4637,6 +4746,64 @@ void MainWindow::ToggleDarkTheme(bool update_config)
     }
 }
 
+static bool RenameFileToBak(const std::string &file)
+{
+    for (size_t i = 0; ; i++)
+    {
+        std::string new_file = file + ".bak";
+        if (i > 0)
+            new_file += Utils::ToString(i+1);
+
+        if (!Utils::FileExists(new_file))
+            return Utils::RenameFile(file, new_file);
+    }
+
+    // Unreachable code
+    return false;
+}
+
+void MainWindow::ClearEpatches()
+{
+    static std::unordered_set<std::string> xv2patcher_xml =
+    {
+        "aiextend.xml",
+        "aura_limit_remove.xml",
+        "autogenportrait_dumper.xml",
+        "bacbcm_protection.xml",
+        "battle_timer.xml",
+        "debug.xml",
+        "freezer_event_offline.xml",
+        "iggy.xml",
+        "jungle.xml",
+        "loose_files.xml",
+        "misc.xml",
+        "mob_control.xml",
+        "new_chara.xml",
+        "new_stages.xml",
+        "prebaked_patches.xml",
+        "psc_destroy_limit.xml",
+        "pseudocacs.xml",
+        "quests.xml",
+        "ui.xml",
+        "unlock_chara.xml",
+        "unlock_stages.xml",
+    };
+
+    const std::string epatches_dir = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), "XV2PATCHER/Epatches");
+    std::vector<std::string> files;
+
+    Utils::ListFiles(epatches_dir, true, false, false, files);
+    for (const std::string &file : files)
+    {
+        if (Utils::EndsWith(file, ".xml", false) && xv2patcher_xml.find(Utils::ToLowerCase(Utils::GetFileNameString(file))) == xv2patcher_xml.end())
+        {
+            //DPRINTF("Renaming %s\n", file.c_str());
+            RenameFileToBak(file);
+        }
+    }
+}
+
+
 bool MainWindow::ClearInstallation(bool special_mode)
 {
     const std::string data_dir = Utils::MakePathString(Utils::QStringToStdString(config.game_directory), "data");
@@ -4686,6 +4853,8 @@ bool MainWindow::ClearInstallation(bool special_mode)
         DPRINTF("Removal of data directory failed.\n");
         success = false;
     }
+
+    ClearEpatches();
 
     if (success)
     {
@@ -4742,6 +4911,7 @@ void MainWindow::RestorePart1()
         return;
     }
 
+    ClearEpatches();
     RestartProgram( { "--restore", Utils::StdStringToQString(data_dir_old, true) });
 }
 
