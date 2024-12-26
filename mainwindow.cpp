@@ -5488,7 +5488,7 @@ void MainWindow::on_actionExit_triggered()
 
 void MainWindow::on_actionAbout_triggered()
 {    
-    DPRINTF("%d\n", Utils::IsUtf8());
+    //DPRINTF("%d\n", Utils::IsUtf8());
     /*size_t size;
     uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.21.1_dirty.exe", &size);
 
