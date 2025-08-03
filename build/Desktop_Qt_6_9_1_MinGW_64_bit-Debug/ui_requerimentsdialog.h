@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'requerimentsdialog.ui'
 **
-** Created by: Qt User Interface Compiler version 5.7.0
+** Created by: Qt User Interface Compiler version 6.9.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -10,12 +10,10 @@
 #define UI_REQUERIMENTSDIALOG_H
 
 #include <QtCore/QVariant>
-#include <QtGui/QAction>
+#include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QPushButton>
@@ -33,35 +31,35 @@ public:
     void setupUi(QDialog *RequerimentsDialog)
     {
         if (RequerimentsDialog->objectName().isEmpty())
-            RequerimentsDialog->setObjectName(QStringLiteral("RequerimentsDialog"));
+            RequerimentsDialog->setObjectName("RequerimentsDialog");
         RequerimentsDialog->resize(400, 178);
         buttonBox = new QDialogButtonBox(RequerimentsDialog);
-        buttonBox->setObjectName(QStringLiteral("buttonBox"));
+        buttonBox->setObjectName("buttonBox");
         buttonBox->setGeometry(QRect(120, 105, 161, 32));
         buttonBox->setOrientation(Qt::Horizontal);
         buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
         label = new QLabel(RequerimentsDialog);
-        label->setObjectName(QStringLiteral("label"));
+        label->setObjectName("label");
         label->setGeometry(QRect(30, 30, 81, 16));
         gameEdit = new QLineEdit(RequerimentsDialog);
-        gameEdit->setObjectName(QStringLiteral("gameEdit"));
+        gameEdit->setObjectName("gameEdit");
         gameEdit->setGeometry(QRect(30, 55, 311, 20));
         gameButton = new QPushButton(RequerimentsDialog);
-        gameButton->setObjectName(QStringLiteral("gameButton"));
+        gameButton->setObjectName("gameButton");
         gameButton->setGeometry(QRect(350, 54, 30, 23));
 
         retranslateUi(RequerimentsDialog);
-        QObject::connect(buttonBox, SIGNAL(accepted()), RequerimentsDialog, SLOT(accept()));
-        QObject::connect(buttonBox, SIGNAL(rejected()), RequerimentsDialog, SLOT(reject()));
+        QObject::connect(buttonBox, &QDialogButtonBox::accepted, RequerimentsDialog, qOverload<>(&QDialog::accept));
+        QObject::connect(buttonBox, &QDialogButtonBox::rejected, RequerimentsDialog, qOverload<>(&QDialog::reject));
 
         QMetaObject::connectSlotsByName(RequerimentsDialog);
     } // setupUi
 
     void retranslateUi(QDialog *RequerimentsDialog)
     {
-        RequerimentsDialog->setWindowTitle(QApplication::translate("RequerimentsDialog", "Configure requirements", 0));
-        label->setText(QApplication::translate("RequerimentsDialog", "Game path:", 0));
-        gameButton->setText(QApplication::translate("RequerimentsDialog", "...", 0));
+        RequerimentsDialog->setWindowTitle(QCoreApplication::translate("RequerimentsDialog", "Configure requirements", nullptr));
+        label->setText(QCoreApplication::translate("RequerimentsDialog", "Game path:", nullptr));
+        gameButton->setText(QCoreApplication::translate("RequerimentsDialog", "...", nullptr));
     } // retranslateUi
 
 };

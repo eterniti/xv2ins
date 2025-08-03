@@ -4,14 +4,16 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui widgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = xv2ins
 TEMPLATE = app
 
-QMAKE_POST_LINK += mt -nologo -manifest $$PWD/../xv2ins_common/manifest.xml -outputresource:$$OUT_PWD/release/$$TARGET".exe" $$escape_expand(\n\t)
+win32 {
+    QMAKE_POST_LINK += mt -nologo -manifest $$PWD/../xv2ins_common/manifest.xml -outputresource:$$DESTDIR/$$TARGET".exe" $$escape_expand(\n\t)
+}
 
 SOURCES += main.cpp\
     ../eternity_common/DBXV2/BdmFile.cpp \
@@ -229,8 +231,10 @@ FORMS    += mainwindow.ui \
 INCLUDEPATH += ../eternity_common ../eternity_common/DBXV2 ../eternity_common/Dimps ../xv2ins_common
 
 QMAKE_CXXFLAGS += -DTIXML_USE_STL
-LIBS += -L"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\x64" -lzipstatic -lzlib_static -lversion
 CONFIG+=resources_big
+
+INCLUDEPATH += "F:\Source\Repos\vcpkg\installed\x64-windows-static\include"
+LIBS += -L"F:\Source\Repos\vcpkg\installed\x64-windows-static\lib" -lzip -lzlib -lversion -lAdvapi32 -lUser32 -lbz2
 
 win32:RC_ICONS += DBXV2.ico
 

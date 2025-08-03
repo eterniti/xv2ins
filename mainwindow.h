@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTreeWidget>
 #include <QLabel>
+#include <QMutex>
 
 #include "X2mFile.h"
 #include "Xv2QuestCompiler.h"

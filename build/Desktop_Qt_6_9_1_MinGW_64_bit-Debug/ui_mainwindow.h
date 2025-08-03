@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created by: Qt User Interface Compiler version 5.7.0
+** Created by: Qt User Interface Compiler version 6.9.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -12,7 +12,6 @@
 #include <QtCore/QVariant>
 #include <QtGui/QAction>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QMainWindow>
@@ -58,55 +57,55 @@ public:
     void setupUi(QMainWindow *MainWindow)
     {
         if (MainWindow->objectName().isEmpty())
-            MainWindow->setObjectName(QStringLiteral("MainWindow"));
+            MainWindow->setObjectName("MainWindow");
         MainWindow->resize(995, 560);
         actionOpen = new QAction(MainWindow);
-        actionOpen->setObjectName(QStringLiteral("actionOpen"));
+        actionOpen->setObjectName("actionOpen");
         QIcon icon;
-        icon.addFile(QStringLiteral(":/install.ico"), QSize(), QIcon::Normal, QIcon::Off);
+        icon.addFile(QString::fromUtf8(":/install.ico"), QSize(), QIcon::Mode::Normal, QIcon::State::Off);
         actionOpen->setIcon(icon);
         actionExit = new QAction(MainWindow);
-        actionExit->setObjectName(QStringLiteral("actionExit"));
+        actionExit->setObjectName("actionExit");
         actionAbout = new QAction(MainWindow);
-        actionAbout->setObjectName(QStringLiteral("actionAbout"));
+        actionAbout->setObjectName("actionAbout");
         actionUninstall = new QAction(MainWindow);
-        actionUninstall->setObjectName(QStringLiteral("actionUninstall"));
+        actionUninstall->setObjectName("actionUninstall");
         QIcon icon1;
-        icon1.addFile(QStringLiteral(":/uninstall.ico"), QSize(), QIcon::Normal, QIcon::Off);
+        icon1.addFile(QString::fromUtf8(":/uninstall.ico"), QSize(), QIcon::Mode::Normal, QIcon::State::Off);
         actionUninstall->setIcon(icon1);
         actionAssociate_x2m_extension = new QAction(MainWindow);
-        actionAssociate_x2m_extension->setObjectName(QStringLiteral("actionAssociate_x2m_extension"));
+        actionAssociate_x2m_extension->setObjectName("actionAssociate_x2m_extension");
         actionSlot_editor = new QAction(MainWindow);
-        actionSlot_editor->setObjectName(QStringLiteral("actionSlot_editor"));
+        actionSlot_editor->setObjectName("actionSlot_editor");
         actionFind_and_delete_dead_ids = new QAction(MainWindow);
-        actionFind_and_delete_dead_ids->setObjectName(QStringLiteral("actionFind_and_delete_dead_ids"));
+        actionFind_and_delete_dead_ids->setObjectName("actionFind_and_delete_dead_ids");
         actionClear_installation = new QAction(MainWindow);
-        actionClear_installation->setObjectName(QStringLiteral("actionClear_installation"));
+        actionClear_installation->setObjectName("actionClear_installation");
         actionRemoveEmptyDirs = new QAction(MainWindow);
-        actionRemoveEmptyDirs->setObjectName(QStringLiteral("actionRemoveEmptyDirs"));
+        actionRemoveEmptyDirs->setObjectName("actionRemoveEmptyDirs");
         actionChange_3_letter_code_of_x2m = new QAction(MainWindow);
-        actionChange_3_letter_code_of_x2m->setObjectName(QStringLiteral("actionChange_3_letter_code_of_x2m"));
+        actionChange_3_letter_code_of_x2m->setObjectName("actionChange_3_letter_code_of_x2m");
         actionConvert_charalist = new QAction(MainWindow);
-        actionConvert_charalist->setObjectName(QStringLiteral("actionConvert_charalist"));
+        actionConvert_charalist->setObjectName("actionConvert_charalist");
         actionCompile_INTERNAL_folder = new QAction(MainWindow);
-        actionCompile_INTERNAL_folder->setObjectName(QStringLiteral("actionCompile_INTERNAL_folder"));
+        actionCompile_INTERNAL_folder->setObjectName("actionCompile_INTERNAL_folder");
         actionSlot_editor_stages = new QAction(MainWindow);
-        actionSlot_editor_stages->setObjectName(QStringLiteral("actionSlot_editor_stages"));
+        actionSlot_editor_stages->setObjectName("actionSlot_editor_stages");
         actionSlot_editor_stages_local_mode = new QAction(MainWindow);
-        actionSlot_editor_stages_local_mode->setObjectName(QStringLiteral("actionSlot_editor_stages_local_mode"));
+        actionSlot_editor_stages_local_mode->setObjectName("actionSlot_editor_stages_local_mode");
         actionTriggerPortOover = new QAction(MainWindow);
-        actionTriggerPortOover->setObjectName(QStringLiteral("actionTriggerPortOover"));
+        actionTriggerPortOover->setObjectName("actionTriggerPortOover");
         actionSet_dark_theme = new QAction(MainWindow);
-        actionSet_dark_theme->setObjectName(QStringLiteral("actionSet_dark_theme"));
+        actionSet_dark_theme->setObjectName("actionSet_dark_theme");
         centralWidget = new QWidget(MainWindow);
-        centralWidget->setObjectName(QStringLiteral("centralWidget"));
+        centralWidget->setObjectName("centralWidget");
         horizontalLayout = new QHBoxLayout(centralWidget);
         horizontalLayout->setSpacing(6);
         horizontalLayout->setContentsMargins(11, 11, 11, 11);
-        horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
+        horizontalLayout->setObjectName("horizontalLayout");
         horizontalLayout->setContentsMargins(3, 0, 3, 0);
         modsList = new QTreeWidget(centralWidget);
-        modsList->setObjectName(QStringLiteral("modsList"));
+        modsList->setObjectName("modsList");
         modsList->setContextMenuPolicy(Qt::ActionsContextMenu);
         modsList->setSelectionMode(QAbstractItemView::ExtendedSelection);
         modsList->setRootIsDecorated(false);
@@ -115,22 +114,22 @@ public:
 
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
-        menuBar->setObjectName(QStringLiteral("menuBar"));
+        menuBar->setObjectName("menuBar");
         menuBar->setGeometry(QRect(0, 0, 995, 22));
         menuFile = new QMenu(menuBar);
-        menuFile->setObjectName(QStringLiteral("menuFile"));
+        menuFile->setObjectName("menuFile");
         menuHelp = new QMenu(menuBar);
-        menuHelp->setObjectName(QStringLiteral("menuHelp"));
+        menuHelp->setObjectName("menuHelp");
         menuTools = new QMenu(menuBar);
-        menuTools->setObjectName(QStringLiteral("menuTools"));
+        menuTools->setObjectName("menuTools");
         menuView = new QMenu(menuBar);
-        menuView->setObjectName(QStringLiteral("menuView"));
+        menuView->setObjectName("menuView");
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
-        mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
-        MainWindow->addToolBar(Qt::TopToolBarArea, mainToolBar);
+        mainToolBar->setObjectName("mainToolBar");
+        MainWindow->addToolBar(Qt::ToolBarArea::TopToolBarArea, mainToolBar);
         statusBar = new QStatusBar(MainWindow);
-        statusBar->setObjectName(QStringLiteral("statusBar"));
+        statusBar->setObjectName("statusBar");
         MainWindow->setStatusBar(statusBar);
 
         menuBar->addAction(menuFile->menuAction());
@@ -164,36 +163,36 @@ public:
 
     void retranslateUi(QMainWindow *MainWindow)
     {
-        MainWindow->setWindowTitle(QApplication::translate("MainWindow", "XV2 Mods Installer", 0));
-        actionOpen->setText(QApplication::translate("MainWindow", "Install", 0));
-        actionExit->setText(QApplication::translate("MainWindow", "Exit", 0));
-        actionAbout->setText(QApplication::translate("MainWindow", "About", 0));
-        actionUninstall->setText(QApplication::translate("MainWindow", "Uninstall", 0));
-        actionAssociate_x2m_extension->setText(QApplication::translate("MainWindow", "Associate .x2m extension", 0));
-        actionSlot_editor->setText(QApplication::translate("MainWindow", "Slot editor", 0));
-        actionFind_and_delete_dead_ids->setText(QApplication::translate("MainWindow", "Find dead ids", 0));
-        actionClear_installation->setText(QApplication::translate("MainWindow", "Clear installation", 0));
-        actionRemoveEmptyDirs->setText(QApplication::translate("MainWindow", "Remove empty directories", 0));
-        actionChange_3_letter_code_of_x2m->setText(QApplication::translate("MainWindow", "Change 3-letter code of x2m", 0));
-        actionConvert_charalist->setText(QApplication::translate("MainWindow", "Convert CharaList", 0));
-        actionCompile_INTERNAL_folder->setText(QApplication::translate("MainWindow", "Compile INTERNAL folder", 0));
-        actionSlot_editor_stages->setText(QApplication::translate("MainWindow", "Slot editor (stages)", 0));
-        actionSlot_editor_stages_local_mode->setText(QApplication::translate("MainWindow", "Slot editor (stages, local mode)", 0));
-        actionTriggerPortOover->setText(QApplication::translate("MainWindow", "Trigger port over", 0));
-        actionSet_dark_theme->setText(QApplication::translate("MainWindow", "Toggle dark theme", 0));
-#ifndef QT_NO_TOOLTIP
-        actionSet_dark_theme->setToolTip(QApplication::translate("MainWindow", "Toggle dark theme", 0));
-#endif // QT_NO_TOOLTIP
+        MainWindow->setWindowTitle(QCoreApplication::translate("MainWindow", "XV2 Mods Installer", nullptr));
+        actionOpen->setText(QCoreApplication::translate("MainWindow", "Install", nullptr));
+        actionExit->setText(QCoreApplication::translate("MainWindow", "Exit", nullptr));
+        actionAbout->setText(QCoreApplication::translate("MainWindow", "About", nullptr));
+        actionUninstall->setText(QCoreApplication::translate("MainWindow", "Uninstall", nullptr));
+        actionAssociate_x2m_extension->setText(QCoreApplication::translate("MainWindow", "Associate .x2m extension", nullptr));
+        actionSlot_editor->setText(QCoreApplication::translate("MainWindow", "Slot editor", nullptr));
+        actionFind_and_delete_dead_ids->setText(QCoreApplication::translate("MainWindow", "Find dead ids", nullptr));
+        actionClear_installation->setText(QCoreApplication::translate("MainWindow", "Clear installation", nullptr));
+        actionRemoveEmptyDirs->setText(QCoreApplication::translate("MainWindow", "Remove empty directories", nullptr));
+        actionChange_3_letter_code_of_x2m->setText(QCoreApplication::translate("MainWindow", "Change 3-letter code of x2m", nullptr));
+        actionConvert_charalist->setText(QCoreApplication::translate("MainWindow", "Convert CharaList", nullptr));
+        actionCompile_INTERNAL_folder->setText(QCoreApplication::translate("MainWindow", "Compile INTERNAL folder", nullptr));
+        actionSlot_editor_stages->setText(QCoreApplication::translate("MainWindow", "Slot editor (stages)", nullptr));
+        actionSlot_editor_stages_local_mode->setText(QCoreApplication::translate("MainWindow", "Slot editor (stages, local mode)", nullptr));
+        actionTriggerPortOover->setText(QCoreApplication::translate("MainWindow", "Trigger port over", nullptr));
+        actionSet_dark_theme->setText(QCoreApplication::translate("MainWindow", "Toggle dark theme", nullptr));
+#if QT_CONFIG(tooltip)
+        actionSet_dark_theme->setToolTip(QCoreApplication::translate("MainWindow", "Toggle dark theme", nullptr));
+#endif // QT_CONFIG(tooltip)
         QTreeWidgetItem *___qtreewidgetitem = modsList->headerItem();
-        ___qtreewidgetitem->setText(4, QApplication::translate("MainWindow", "Install Date", 0));
-        ___qtreewidgetitem->setText(3, QApplication::translate("MainWindow", "Type", 0));
-        ___qtreewidgetitem->setText(2, QApplication::translate("MainWindow", "Version", 0));
-        ___qtreewidgetitem->setText(1, QApplication::translate("MainWindow", "Author", 0));
-        ___qtreewidgetitem->setText(0, QApplication::translate("MainWindow", "Name", 0));
-        menuFile->setTitle(QApplication::translate("MainWindow", "File", 0));
-        menuHelp->setTitle(QApplication::translate("MainWindow", "Help", 0));
-        menuTools->setTitle(QApplication::translate("MainWindow", "Tools", 0));
-        menuView->setTitle(QApplication::translate("MainWindow", "View", 0));
+        ___qtreewidgetitem->setText(4, QCoreApplication::translate("MainWindow", "Install Date", nullptr));
+        ___qtreewidgetitem->setText(3, QCoreApplication::translate("MainWindow", "Type", nullptr));
+        ___qtreewidgetitem->setText(2, QCoreApplication::translate("MainWindow", "Version", nullptr));
+        ___qtreewidgetitem->setText(1, QCoreApplication::translate("MainWindow", "Author", nullptr));
+        ___qtreewidgetitem->setText(0, QCoreApplication::translate("MainWindow", "Name", nullptr));
+        menuFile->setTitle(QCoreApplication::translate("MainWindow", "File", nullptr));
+        menuHelp->setTitle(QCoreApplication::translate("MainWindow", "Help", nullptr));
+        menuTools->setTitle(QCoreApplication::translate("MainWindow", "Tools", nullptr));
+        menuView->setTitle(QCoreApplication::translate("MainWindow", "View", nullptr));
     } // retranslateUi
 
 };

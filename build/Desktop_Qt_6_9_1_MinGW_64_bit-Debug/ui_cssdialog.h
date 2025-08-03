@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'cssdialog.ui'
 **
-** Created by: Qt User Interface Compiler version 5.7.0
+** Created by: Qt User Interface Compiler version 6.9.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -10,13 +10,12 @@
 #define UI_CSSDIALOG_H
 
 #include <QtCore/QVariant>
-#include <QtGui/QAction>
+#include <QtGui/QIcon>
+#include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QGridLayout>
-#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QScrollArea>
@@ -39,52 +38,52 @@ public:
     void setupUi(QDialog *CssDialog)
     {
         if (CssDialog->objectName().isEmpty())
-            CssDialog->setObjectName(QStringLiteral("CssDialog"));
+            CssDialog->setObjectName("CssDialog");
         CssDialog->resize(758, 346);
         buttonBox = new QDialogButtonBox(CssDialog);
-        buttonBox->setObjectName(QStringLiteral("buttonBox"));
+        buttonBox->setObjectName("buttonBox");
         buttonBox->setGeometry(QRect(290, 290, 161, 32));
         buttonBox->setOrientation(Qt::Horizontal);
         buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
         buttonBox->setCenterButtons(true);
         scrollArea = new QScrollArea(CssDialog);
-        scrollArea->setObjectName(QStringLiteral("scrollArea"));
+        scrollArea->setObjectName("scrollArea");
         scrollArea->setGeometry(QRect(30, 40, 698, 226));
         scrollArea->setWidgetResizable(true);
         scrollAreaWidgetContents = new QWidget();
-        scrollAreaWidgetContents->setObjectName(QStringLiteral("scrollAreaWidgetContents"));
+        scrollAreaWidgetContents->setObjectName("scrollAreaWidgetContents");
         scrollAreaWidgetContents->setGeometry(QRect(0, 0, 696, 224));
         gridLayout = new QGridLayout(scrollAreaWidgetContents);
         gridLayout->setSpacing(0);
-        gridLayout->setObjectName(QStringLiteral("gridLayout"));
+        gridLayout->setObjectName("gridLayout");
         gridLayout->setContentsMargins(0, 0, 0, 0);
         scrollArea->setWidget(scrollAreaWidgetContents);
         cancelButton = new QPushButton(CssDialog);
-        cancelButton->setObjectName(QStringLiteral("cancelButton"));
+        cancelButton->setObjectName("cancelButton");
         cancelButton->setGeometry(QRect(330, 294, 75, 23));
         addButton = new QToolButton(CssDialog);
-        addButton->setObjectName(QStringLiteral("addButton"));
+        addButton->setObjectName("addButton");
         addButton->setGeometry(QRect(726, 248, 25, 19));
         QIcon icon;
-        icon.addFile(QStringLiteral(":/add.png"), QSize(), QIcon::Normal, QIcon::Off);
+        icon.addFile(QString::fromUtf8(":/add.png"), QSize(), QIcon::Mode::Normal, QIcon::State::Off);
         addButton->setIcon(icon);
         tipLabel = new QLabel(CssDialog);
-        tipLabel->setObjectName(QStringLiteral("tipLabel"));
+        tipLabel->setObjectName("tipLabel");
         tipLabel->setGeometry(QRect(30, 14, 461, 16));
 
         retranslateUi(CssDialog);
-        QObject::connect(buttonBox, SIGNAL(accepted()), CssDialog, SLOT(accept()));
-        QObject::connect(buttonBox, SIGNAL(rejected()), CssDialog, SLOT(reject()));
+        QObject::connect(buttonBox, &QDialogButtonBox::accepted, CssDialog, qOverload<>(&QDialog::accept));
+        QObject::connect(buttonBox, &QDialogButtonBox::rejected, CssDialog, qOverload<>(&QDialog::reject));
 
         QMetaObject::connectSlotsByName(CssDialog);
     } // setupUi
 
     void retranslateUi(QDialog *CssDialog)
     {
-        CssDialog->setWindowTitle(QApplication::translate("CssDialog", "Dialog", 0));
-        cancelButton->setText(QApplication::translate("CssDialog", "Cancel", 0));
-        addButton->setText(QApplication::translate("CssDialog", "...", 0));
-        tipLabel->setText(QApplication::translate("CssDialog", "<html><head/><body><p><span style=\" font-weight:600;\">Tip: use middle or right button to drag a slot into another one to open a menu.</span></p></body></html>", 0));
+        CssDialog->setWindowTitle(QCoreApplication::translate("CssDialog", "Dialog", nullptr));
+        cancelButton->setText(QCoreApplication::translate("CssDialog", "Cancel", nullptr));
+        addButton->setText(QCoreApplication::translate("CssDialog", "...", nullptr));
+        tipLabel->setText(QCoreApplication::translate("CssDialog", "<html><head/><body><p><span style=\" font-weight:600;\">Tip: use middle or right button to drag a slot into another one to open a menu.</span></p></body></html>", nullptr));
     } // retranslateUi
 
 };

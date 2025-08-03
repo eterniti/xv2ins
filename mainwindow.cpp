@@ -1,7 +1,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCloseEvent>
-#include <QDesktopWidget>
+#include <QScreen>
 #include <QPushButton>
 #include <QCheckBox>
 #include <QTime>
@@ -167,7 +167,7 @@ bool MainWindow::Initialize()
     {
         clean_install = true;
     }
-    else if (!game_cms->FindEntryByName("NTG") || !game_cms->FindEntryByName("NTJ"))
+    else if (!game_cms->FindEntryByName("XXG") || !game_cms->FindEntryByName("XXV"))
     {
         clean_install = true;
     }
@@ -448,7 +448,7 @@ void MainWindow::ModToGui(MainWindow::ModEntry &entry)
 
     item->setText(COLUMN_TYPE, type);
     //item->setText(COLUMN_DATE, QDateTime::fromTime_t(entry.last_modified).toString(Qt::TextDate));
-    item->setText(COLUMN_DATE, QDateTime::fromTime_t(entry.last_modified).toString(Qt::ISODate).replace("T", " "));
+    item->setText(COLUMN_DATE, QDateTime::fromSecsSinceEpoch(entry.last_modified).toString(Qt::ISODate).replace("T", " "));
 }
 
 MainWindow::ModEntry *MainWindow::GetSelectedMod()
