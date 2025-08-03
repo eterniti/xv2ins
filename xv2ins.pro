@@ -11,6 +11,12 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = xv2ins
 TEMPLATE = app
 
+CONFIG(release, debug|release) {
+    DESTDIR = $$OUT_PWD/release
+} else {
+    DESTDIR = $$OUT_PWD/debug
+}
+
 win32 {
     QMAKE_POST_LINK += mt -nologo -manifest $$PWD/../xv2ins_common/manifest.xml -outputresource:$$DESTDIR/$$TARGET".exe" $$escape_expand(\n\t)
 }
