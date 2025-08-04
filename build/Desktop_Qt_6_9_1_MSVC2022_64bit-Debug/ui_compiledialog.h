@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'compiledialog.ui'
 **
-** Created by: Qt User Interface Compiler version 5.7.0
+** Created by: Qt User Interface Compiler version 6.9.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -10,12 +10,10 @@
 #define UI_COMPILEDIALOG_H
 
 #include <QtCore/QVariant>
-#include <QtGui/QAction>
+#include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QPushButton>
@@ -33,34 +31,34 @@ public:
     void setupUi(QDialog *compiledialog)
     {
         if (compiledialog->objectName().isEmpty())
-            compiledialog->setObjectName(QStringLiteral("compiledialog"));
+            compiledialog->setObjectName("compiledialog");
         compiledialog->resize(400, 178);
         buttonBox = new QDialogButtonBox(compiledialog);
-        buttonBox->setObjectName(QStringLiteral("buttonBox"));
+        buttonBox->setObjectName("buttonBox");
         buttonBox->setGeometry(QRect(120, 105, 161, 32));
         buttonBox->setOrientation(Qt::Horizontal);
         buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
         label = new QLabel(compiledialog);
-        label->setObjectName(QStringLiteral("label"));
+        label->setObjectName("label");
         label->setGeometry(QRect(30, 30, 101, 16));
         flexEdit = new QLineEdit(compiledialog);
-        flexEdit->setObjectName(QStringLiteral("flexEdit"));
+        flexEdit->setObjectName("flexEdit");
         flexEdit->setGeometry(QRect(30, 55, 311, 20));
         flexButton = new QPushButton(compiledialog);
-        flexButton->setObjectName(QStringLiteral("flexButton"));
+        flexButton->setObjectName("flexButton");
         flexButton->setGeometry(QRect(350, 54, 30, 23));
 
         retranslateUi(compiledialog);
-        QObject::connect(buttonBox, SIGNAL(rejected()), compiledialog, SLOT(reject()));
+        QObject::connect(buttonBox, &QDialogButtonBox::rejected, compiledialog, qOverload<>(&QDialog::reject));
 
         QMetaObject::connectSlotsByName(compiledialog);
     } // setupUi
 
     void retranslateUi(QDialog *compiledialog)
     {
-        compiledialog->setWindowTitle(QApplication::translate("compiledialog", "Dialog", 0));
-        label->setText(QApplication::translate("compiledialog", "Flex SDK compiler:", 0));
-        flexButton->setText(QApplication::translate("compiledialog", "...", 0));
+        compiledialog->setWindowTitle(QCoreApplication::translate("compiledialog", "Dialog", nullptr));
+        label->setText(QCoreApplication::translate("compiledialog", "Flex SDK compiler:", nullptr));
+        flexButton->setText(QCoreApplication::translate("compiledialog", "...", nullptr));
     } // retranslateUi
 
 };
