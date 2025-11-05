@@ -167,7 +167,7 @@ bool MainWindow::Initialize()
     {
         clean_install = true;
     }
-    else if (!game_cms->FindEntryByName("NTG") || !game_cms->FindEntryByName("NTJ"))
+    else if (!game_cms->FindEntryByName("XAB") || !game_cms->FindEntryByName("XAF"))
     {
         clean_install = true;
     }
@@ -182,11 +182,11 @@ bool MainWindow::Initialize()
         QMessageBox box;
 
         box.setText("It looks like you have game data from an old update, the installer cannot work with these files.\n"
-                    "\nTo continue, you will have to either clear installation or port over current installation (experimental)\n"
+                    "\nTo continue, you will have to either clear installation or port over current installation\n"
                     "\nIn both cases, you will have another confirmation screen before.");
 
         QPushButton *clear = box.addButton("Clear", QMessageBox::ActionRole);
-        QPushButton *restore = box.addButton("Port over (experimental)", QMessageBox::ActionRole);
+        QPushButton *restore = box.addButton("Port over", QMessageBox::ActionRole);
         box.addButton(QMessageBox::Cancel);
         box.setDefaultButton(clear);
 
@@ -870,9 +870,12 @@ MainWindow::ModEntry *MainWindow::FindModByEntry(const QString &entry)
 bool MainWindow::CanUpdateSlots(const X2mFile &new_mod, const X2mFile &old_mod) const
 {
     size_t num_slots = new_mod.GetNumSlotEntries();
+    size_t num_slots_nh = new_mod.GetNumNonHiddenSlotEntries();
     const std::string entry_name = new_mod.GetEntryName();
 
-    if (old_mod.GetNumSlotEntries() != num_slots)
+    //DPRINTF("Num slots = %Id, num slots nh = %Id, old slots nh = %Id\n", num_slots, num_slots_nh, old_mod.GetNumNonHiddenSlotEntries());
+
+    if (old_mod.GetNumNonHiddenSlotEntries() != num_slots_nh)
         return false;
 
     if (new_mod.IsInvisible() != old_mod.IsInvisible())
@@ -883,7 +886,7 @@ bool MainWindow::CanUpdateSlots(const X2mFile &new_mod, const X2mFile &old_mod) 
 
     if (!new_mod.IsInvisible())
     {
-        if (charalist_entries.size() != num_slots)
+        if (charalist_entries.size() != num_slots_nh)
             return false;
     }
     /*else if (charalist_entries.size() > 0) // This should only happen if user manually attached a slot to an "invisible" mod
@@ -1941,7 +1944,10 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
             box.setWindowTitle("Install");
 
-            int num_slots = (int) x2m.GetNumSlotEntries();
+
+            std::vector<X2mSlotEntry *> nh_slots;
+
+            int num_slots = (int) x2m.GetNonHiddenSlotEntries(nh_slots);
 
             if (!x2m.IsInvisible())
             {
@@ -2060,7 +2066,7 @@ MainWindow::ModEntry *MainWindow::InstallMod(const QString &path, ModEntry *rein
 
                     for (int i = 0; i < num_slots; i++)
                     {
-                        const X2mSlotEntry &x_entry = x2m.GetSlotEntry(i);
+                        const X2mSlotEntry &x_entry = *nh_slots[i];
 
                         UPRINTF("Select slot for costume \"%s\"\n", x_entry.costume_name[XV2_LANG_ENGLISH].c_str());
 
@@ -4875,7 +4881,7 @@ void MainWindow::RestorePart1()
     QMessageBox box;
     QString text;
 
-    text = "<b><font color='red'>Warning: this is an experimental/alpha festure.<br>Make sure to read everything before confirming.<br>An in case of instability in game, use Tools->Clear Installation and install from scratch.</font></b><br>";
+    text = "<b><br>Make sure to read everything before confirming.<br>And in case of instability in game, use Tools->Clear Installation and install from scratch.</b><br>";
     text += "<br>This process will attempt to port over current installation.<br>";
     text += "The process will consist in the following:<br><br>";
     text += "\t-Firstly, the data folder will be renamed to " + Utils::StdStringToQString(Utils::GetFileNameString(data_dir_old), true) + "<br><br>";
@@ -4891,7 +4897,6 @@ void MainWindow::RestorePart1()
     text += "<br>Before proceeding, these warnings:<br>";
     text += "<b><font color='red'>-DO NOT CLOSE THE LOG WINDOW UNTIL THE PROCESS IS FINISHED.</font></b><br>";
     text += "<b>-Make sure to not have any programs, using the current data folder or the rename will fail.</b><br>";
-    text += "<b>-If after several seconds, you cannot see a log window after clicking Yes, please try to minimize all windows.</b><br>";
     text += "<b>-You need at least the same space in disk that current data folder has.</b><br>";
     text += "<br><br>Do you want to proceed?";
 
@@ -5206,7 +5211,8 @@ bool MainWindow::RestoreStageSlots(const std::string &recover_path, bool local)
     }
 
     // Now insert any new vanilla stage (if any)
-    for (const Xv2StageSlot &slot : *game_stage_slots_file)
+    Xv2PatcherSlotsFileStage *cur_slots = (local) ? game_stage_slots_file_local : game_stage_slots_file;
+    for (const Xv2StageSlot &slot : *cur_slots)
     {
         Xv2Stage *s = game_stage_def->GetStageBySsid(slot.stage);
         if (!s || !Xenoverse2::IsForbiddenNewStageName(s->code))
@@ -5255,8 +5261,8 @@ void MainWindow::RestorePart2(const QString &recover_path)
 
     std::string rp_std = Utils::QStringToStdString(recover_path, true);
 
-    log_dlg = new LogDialog(this);
-    log_dlg->setWindowTitle("X2M Install Restoration");
+    log_dlg = new LogDialog(nullptr);
+    log_dlg->setWindowTitle("X2M Install Restoration - DO NOT CLOSE ME UNTIL DONE");
     log_dlg->Resize(400, 400);
     log_dlg->show();
 
@@ -5490,7 +5496,7 @@ void MainWindow::on_actionAbout_triggered()
 {    
     //DPRINTF("%d\n", Utils::IsUtf8());
     /*size_t size;
-    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.21.1_dirty.exe", &size);
+    uint8_t *buf = Utils::ReadFile("C:/Users/MUU/DBXV2_1.25.1_dirty.exe", &size);
 
     if (!buf)
     {
@@ -5498,7 +5504,8 @@ void MainWindow::on_actionAbout_triggered()
         return;
     }
 
-    static const char *eve_dump[] = { "template", "BFlbb", "template", "BFpln", "BFrck", "BFrcn", "BFnmc", "BFnms", "BFnmb", "BFtwc", "BFtwn", "BFtwh", "BFcel", "BFceb", "BFkoh", "BFsin", "BFsky", "BFsei", "BFkai", "BFspe", "BFspv", "BFice", "BFtfl", "BFgen", "BFten", "BFund", "BFtok", "BFnmt", "template", "BFnmc", "BFnms", "DMtwh", "template", "template", "template", "template", "template", "template", "BFlnd", "BFlnc", "BFhel", "template", "template", "template", "template", "template", "template", "template", "template", "template", "DMtwh2", "BFtre", "BFbrw", "FLBY03IN", "FLBY04IN", "FLBY05IN", "BFsmt", "template", "BFtwf", "BFwis", "BFpot", "BFvol", "BFrrg", "Err", "Err", "Err", "Err", "Err", "TRN", "template", "SANDBOX", "NMC", "Random" };
+    static const char *eve_dump[] = { "template", "BFlbb", "template", "BFpln", "BFrck", "BFrcn", "BFnmc", "BFnms", "BFnmb", "BFtwc", "BFtwn", "BFtwh", "BFcel", "BFceb", "BFkoh", "BFsin", "BFsky", "BFsei", "BFkai", "BFspe", "BFspv", "BFice", "BFtfl", "BFgen", "BFten", "BFund", "BFtok", "BFnmt", "template", "BFnmc", "BFnms", "DMtwh", "template", "template", "template", "template", "template", "template", "BFlnd", "BFlnc", "BFhel", "template", "template", "template", "template", "template", "template", "template", "template", "template", "DMtwh2", "BFtre", "BFbrw", "FLBY03IN", "FLBY04IN", "FLBY05IN", "BFsmt", "template", "BFtwf", "BFwis", "BFpot", "BFvol", "BFrrg", "MLBY", "PLBY", "BFlbn", "BFlbh", "Err", "TRN", "template", "SANDBOX", "NMC", "Random" };
+
 
     Xv2StageDefFile stadef;
 
@@ -5578,14 +5585,27 @@ void MainWindow::on_actionAbout_triggered()
     //                             buf+0xF022D0,
     //                             eve_dump))
     // 1.21.1
-    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7DD7C0000, buf, buf+0xFB52E0,
-                                 XV2_ORIGINAL_NUM_SS_STAGES, buf+0xFB5E50,
-                                 buf+0xFB5EF0,
-                                 buf+0xF7CD40,
-                                 buf+0xF81F60,
-                                 buf+0x14EDBD0,
-                                 buf+0xFE5AC0,
-                                 eve_dump))
+    //if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, 0x7FF7DD7C0000, buf, buf+0xFB52E0,
+    //                             XV2_ORIGINAL_NUM_SS_STAGES, buf+0xFB5E50,
+    //                             buf+0xFB5EF0,
+    //                             buf+0xF7CD40,
+    //                             buf+0xF81F60,
+    //                             buf+0x14EDBD0,
+    //                             buf+0xFE5AC0,
+    //                             eve_dump))
+    // 1.25.1
+    if (!stadef.LoadFromDump(XV2_ORIGINAL_NUM_STAGES, // Num stages
+                             0x7FF65A110000, // Dump base addr
+                             buf, // Base ptr
+                             buf+0x1037870, // Def1
+                             XV2_ORIGINAL_NUM_SS_STAGES, // Num ss stages
+                             buf+0x10383E0, // ssid (stage_id_to_idx)
+                             buf+0x1038480, // f6 array
+                             buf+0xFF6B10, // Def2
+                             buf+0xFFBD30, // Def2 gbb mode
+                             buf+0x15A6DF0, // SE array (stage_sounds)
+                             buf+0x106BBE0, // BGM array (stage_music)
+                             eve_dump)) // Eve dump
         return;
 
     if (!xv2fs->DecompileFile(&stadef, "data/xv2_stage_def.xml"))

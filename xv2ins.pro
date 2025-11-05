@@ -18,6 +18,7 @@ SOURCES += main.cpp\
     ../eternity_common/DBXV2/BpeFile.cpp \
     ../eternity_common/DBXV2/IkdFile.cpp \
     ../eternity_common/DBXV2/VlcFile.cpp \
+    ../eternity_common/DBXV2/Xv2LobbyDefFile.cpp \
     ../eternity_common/UtilsCrypto.cpp \
     ../eternity_common/UtilsFS.cpp \
     ../eternity_common/UtilsMisc.cpp \
@@ -114,6 +115,7 @@ HEADERS  += mainwindow.h \
     ../eternity_common/DBXV2/BpeFile.h \
     ../eternity_common/DBXV2/IkdFile.h \
     ../eternity_common/DBXV2/VlcFile.h \
+    ../eternity_common/DBXV2/Xv2LobbyDefFile.h \
     ../eternity_common/UtilsCrypto.h \
     ../eternity_common/UtilsFS.h \
     ../eternity_common/UtilsMisc.h \

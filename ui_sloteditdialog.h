@@ -144,6 +144,8 @@ public:
          << QApplication::translate("SlotEditDialog", "Dlc_16", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_17", 0)
          << QApplication::translate("SlotEditDialog", "Dlc_18", 0)
+         << QApplication::translate("SlotEditDialog", "Dlc_19", 0)
+         << QApplication::translate("SlotEditDialog", "Dlc_20", 0)
         );
         cgk2Check->setText(QApplication::translate("SlotEditDialog", "Flag CGK2", 0));
     } // retranslateUi
